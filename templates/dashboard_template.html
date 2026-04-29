@@ -279,7 +279,6 @@
                         <th class="number">Budget</th>
                         <th class="number">Actual</th>
                         <th class="number">Variance</th>
-                        <th class="number">Variance %</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -525,7 +524,22 @@
                 'Net Surplus / (Deflect)'
             ];
 
-            const labels = metrics.map(m => ytd[m]?.dashboard_name || m);
+            // Apply dynamic labels based on ACTUAL values
+            const labels = metrics.map(m => {
+                if (!ytd[m]) return m;
+
+                const actual = ytd[m].actual;
+
+                // Dynamic labels for Profit/Loss metrics
+                if (m === 'Gross Profit / (Loss)') {
+                    return actual >= 0 ? 'Gross Profit' : 'Gross Loss';
+                }
+                if (m === 'Net Surplus / (Deflect)') {
+                    return actual >= 0 ? 'Net Profit' : 'Net Loss';
+                }
+
+                return ytd[m].dashboard_name || m;
+            });
             const variances = metrics.map(m => ytd[m]?.variance || 0);
 
             // Create gradient colors for bars
@@ -660,7 +674,6 @@
                 if (!ytd[metricKey]) return;
 
                 const data = ytd[metricKey];
-                const variancePct = data.budget !== 0 ? (data.variance / data.budget * 100) : 0;
                 const isPercent = metricKey.includes('%');
                 const format = isPercent ? 'percent' : 'currency';
 
@@ -671,7 +684,6 @@
                     <td class="number">${formatNumber(data.budget, format)}</td>
                     <td class="number">${formatNumber(data.actual, format)}</td>
                     <td class="number variance-cell" data-variance="${data.variance}">${formatNumber(data.variance, format)}</td>
-                    <td class="number">${variancePct.toFixed(1)}%</td>
                 `;
                 tbody.appendChild(row);
             });
