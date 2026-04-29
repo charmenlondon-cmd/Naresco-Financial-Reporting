@@ -373,6 +373,15 @@
             const budgetData = months.map(m => monthlyData[m]['Total Revenue']?.budget || 0);
             const actualData = months.map(m => monthlyData[m]['Total Revenue']?.actual || 0);
 
+            // Create gradients
+            const budgetGradient = ctx.createLinearGradient(0, 0, 0, 400);
+            budgetGradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+            budgetGradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+            const actualGradient = ctx.createLinearGradient(0, 0, 0, 400);
+            actualGradient.addColorStop(0, 'rgba(34, 197, 94, 0.4)');
+            actualGradient.addColorStop(1, 'rgba(34, 197, 94, 0.0)');
+
             new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -381,31 +390,71 @@
                         {
                             label: 'Budget',
                             data: budgetData,
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                            borderWidth: 3,
+                            borderColor: '#6366f1',
+                            backgroundColor: budgetGradient,
+                            borderWidth: 4,
                             tension: 0.4,
-                            fill: true
+                            fill: true,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            pointBackgroundColor: '#6366f1',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 3,
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#6366f1',
+                            pointHoverBorderWidth: 3
                         },
                         {
                             label: 'Actual',
                             data: actualData,
-                            borderColor: '#48bb78',
-                            backgroundColor: 'rgba(72, 187, 120, 0.1)',
-                            borderWidth: 3,
+                            borderColor: '#22c55e',
+                            backgroundColor: actualGradient,
+                            borderWidth: 4,
                             tension: 0.4,
-                            fill: true
+                            fill: true,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            pointBackgroundColor: '#22c55e',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 3,
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#22c55e',
+                            pointHoverBorderWidth: 3
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
                     plugins: {
                         legend: {
                             position: 'top',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 13,
+                                    weight: '600'
+                                },
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
                         },
                         tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
                             callbacks: {
                                 label: function(context) {
                                     return context.dataset.label + ': ' + formatNumber(context.parsed.y, 'currency');
@@ -416,12 +465,37 @@
                     scales: {
                         y: {
                             beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
                             ticks: {
+                                padding: 10,
+                                font: {
+                                    size: 12
+                                },
                                 callback: function(value) {
                                     return formatNumber(value, 'currency');
                                 }
                             }
+                        },
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                padding: 10,
+                                font: {
+                                    size: 12,
+                                    weight: '500'
+                                }
+                            }
                         }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
                     }
                 }
             });
@@ -443,7 +517,21 @@
 
             const labels = metrics.map(m => ytd[m]?.dashboard_name || m);
             const variances = metrics.map(m => ytd[m]?.variance || 0);
-            const colors = variances.map(v => v >= 0 ? '#48bb78' : '#f56565');
+
+            // Create gradient colors for bars
+            const backgroundColors = variances.map((v, i) => {
+                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                if (v >= 0) {
+                    gradient.addColorStop(0, '#22c55e');
+                    gradient.addColorStop(1, '#16a34a');
+                } else {
+                    gradient.addColorStop(0, '#ef4444');
+                    gradient.addColorStop(1, '#dc2626');
+                }
+                return gradient;
+            });
+
+            const borderColors = variances.map(v => v >= 0 ? '#16a34a' : '#dc2626');
 
             new Chart(ctx, {
                 type: 'bar',
@@ -452,9 +540,11 @@
                     datasets: [{
                         label: 'Variance',
                         data: variances,
-                        backgroundColor: colors,
-                        borderColor: colors,
-                        borderWidth: 1
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false
                     }]
                 },
                 options: {
@@ -465,6 +555,17 @@
                             display: false
                         },
                         tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
                             callbacks: {
                                 label: function(context) {
                                     return 'Variance: ' + formatNumber(context.parsed.y, 'currency');
@@ -474,12 +575,39 @@
                     },
                     scales: {
                         y: {
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
                             ticks: {
+                                padding: 10,
+                                font: {
+                                    size: 12
+                                },
                                 callback: function(value) {
                                     return formatNumber(value, 'currency');
                                 }
                             }
+                        },
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                padding: 10,
+                                font: {
+                                    size: 11,
+                                    weight: '500'
+                                },
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
                         }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
                     }
                 }
             });
@@ -665,9 +793,7 @@
 
         function formatNumber(value, type) {
             if (type === 'currency') {
-                return new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: 'USD',
+                return 'AED ' + new Intl.NumberFormat('en-AE', {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 0
                 }).format(value);
