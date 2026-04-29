@@ -528,7 +528,7 @@
       "dashboard_name": "Net Profit / Loss %"
     }
   },
-  "generated_at": "2026-04-29 14:09:56"
+  "generated_at": "2026-04-29 14:11:14"
 };
 
         // Formatting rules storage
@@ -762,9 +762,17 @@
             const variances = metrics.map(m => ytd[m]?.variance || 0);
 
             // Create gradient colors for bars
+            // For COST metrics: positive variance = bad (red), negative = good (green)
+            // For REVENUE/PROFIT metrics: positive variance = good (green), negative = bad (red)
             const backgroundColors = variances.map((v, i) => {
                 const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                if (v >= 0) {
+                const metricName = metrics[i].toLowerCase();
+                const isCostMetric = metricName.includes('cost');
+
+                // Invert colors for cost metrics
+                const isGood = isCostMetric ? (v < 0) : (v >= 0);
+
+                if (isGood) {
                     gradient.addColorStop(0, '#22c55e');
                     gradient.addColorStop(1, '#16a34a');
                 } else {
@@ -774,7 +782,12 @@
                 return gradient;
             });
 
-            const borderColors = variances.map(v => v >= 0 ? '#16a34a' : '#dc2626');
+            const borderColors = variances.map((v, i) => {
+                const metricName = metrics[i].toLowerCase();
+                const isCostMetric = metricName.includes('cost');
+                const isGood = isCostMetric ? (v < 0) : (v >= 0);
+                return isGood ? '#16a34a' : '#dc2626';
+            });
 
             new Chart(ctx, {
                 type: 'bar',
