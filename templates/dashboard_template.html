@@ -6,7 +6,7 @@
     <title>Budget vs Actual Dashboard - Naresco Finance</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
@@ -16,8 +16,8 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
             padding: 20px;
             min-height: 100vh;
         }
@@ -47,7 +47,7 @@
         }
 
         .admin-toggle {
-            background: #667eea;
+            background: #1e40af;
             color: white;
             border: none;
             padding: 10px 20px;
@@ -55,10 +55,11 @@
             cursor: pointer;
             float: right;
             font-size: 14px;
+            font-weight: 500;
         }
 
         .admin-toggle:hover {
-            background: #5568d3;
+            background: #1e3a8a;
         }
 
         .admin-panel {
@@ -167,11 +168,12 @@
         }
 
         th {
-            background: #667eea;
+            background: #1e40af;
             color: white;
             padding: 15px;
             text-align: left;
             font-weight: 600;
+            letter-spacing: 0.025em;
         }
 
         td {
@@ -370,10 +372,10 @@
             const budgetData = months.map(m => monthlyData[m]['Total Revenue']?.budget || 0);
             const actualData = months.map(m => monthlyData[m]['Total Revenue']?.actual || 0);
 
-            // Create gradients
+            // Create gradients - Corporate blue for budget
             const budgetGradient = ctx.createLinearGradient(0, 0, 0, 400);
-            budgetGradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
-            budgetGradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+            budgetGradient.addColorStop(0, 'rgba(30, 64, 175, 0.4)');
+            budgetGradient.addColorStop(1, 'rgba(30, 64, 175, 0.0)');
 
             const actualGradient = ctx.createLinearGradient(0, 0, 0, 400);
             actualGradient.addColorStop(0, 'rgba(34, 197, 94, 0.4)');
@@ -387,18 +389,18 @@
                         {
                             label: 'Budget',
                             data: budgetData,
-                            borderColor: '#6366f1',
+                            borderColor: '#1e40af',
                             backgroundColor: budgetGradient,
                             borderWidth: 4,
                             tension: 0.4,
                             fill: true,
                             pointRadius: 6,
                             pointHoverRadius: 8,
-                            pointBackgroundColor: '#6366f1',
+                            pointBackgroundColor: '#1e40af',
                             pointBorderColor: '#fff',
                             pointBorderWidth: 3,
                             pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: '#6366f1',
+                            pointHoverBorderColor: '#1e40af',
                             pointHoverBorderWidth: 3
                         },
                         {
