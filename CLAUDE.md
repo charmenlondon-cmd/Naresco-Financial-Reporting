@@ -49,9 +49,10 @@ Live Dashboard (Web)
 **Percentage Handling**: Always in row directly below parent metric (e.g., "TVC %" below "Total Variable Cost")
 
 ### 2. Month Detection Algorithm
-**Method**: Count "Budget" headers in row 11
-**Formula**: Number of months = Count of columns with "Budget" header
-**Why**: Robust against file structure changes, doesn't rely on column counting alone
+**Method**: Count "Budget" and "Total Budget" headers in row 11
+**Formula**: Number of months = Count of columns with "Budget" or "Total Budget" header
+**Why**: Robust against file structure changes, includes cumulative totals as final month
+**Note**: Handles "Total Budget" column as Month 3 (cumulative YTD data)
 
 ### 3. Multi-Month Extraction (Default)
 **Behavior**: Extracts ALL months from file by default
@@ -237,30 +238,46 @@ git push  # Vercel auto-deploys
 ### Executive KPI Cards
 - **Total Revenue**: Budget vs Actual with variance
 - **Contribution Margin**: Budget vs Actual with variance
-- **Gross Profit/Loss**: Dynamic label based on value
-- **Net Profit/Loss**: Dynamic label based on value
+- **Gross Profit/Loss**: Dynamic label based on ACTUAL value
+- **Net Profit/Loss**: Dynamic label based on ACTUAL value
+
+### Budget vs Actual Comparison Chart (NEW)
+- **Type**: Grouped bar chart
+- **Position**: Below KPI cards, above Variance Analysis
+- **Data**: Budget (blue bars) vs Actual (green bars) for 7 key metrics
+- **Labels**: Based on ACTUAL values (Gross Profit/Loss, Net Profit/Loss)
+- **Purpose**: Visual comparison of absolute performance vs plan
+- **Style**: Rounded corners, smooth animations, side-by-side comparison
 
 ### Variance Analysis Chart
 - **Type**: Horizontal bar chart
+- **Header**: Prominent "Variance Analysis" (bold, blue, 24px)
 - **Data**: YTD variance for 7 key metrics
-- **Colors**: Green gradient (positive), Red gradient (negative)
+- **Labels**: Based on VARIANCE direction (Gross Loss Variance when negative)
+- **Colors**: 
+  - Cost metrics: Negative variance = green (under budget), Positive = red (over budget)
+  - Revenue/Profit metrics: Positive variance = green (over budget), Negative = red (under budget)
+- **Purpose**: Shows performance gaps and budget deviations
 - **Style**: Rounded corners, smooth animations
 
 ### Data Table
-- **Columns**: Metric, Budget, Actual, Variance ($), Variance (%)
+- **Columns**: Metric, Budget, Actual, Variance ($)
 - **Rows**: All 13 metrics in logical order
-- **Formatting**: Conditional formatting via admin controls
-- **Font**: Inter (modern, rounded, readable)
+- **Formatting**: Conditional formatting via admin controls (both Actual and Variance columns)
+- **Font**: Poppins (modern, rounded, readable)
+- **Dynamic Labels**: Profit/Loss labels change based on ACTUAL values
 
 ### Admin Control Panel
 - **Access**: "Admin Controls" button in header
 - **Features**:
   - Configure up to 3 formatting rules per metric
+  - **Column Selector**: Choose Actual or Variance column per rule
   - Conditions: >, <, >=, <=, =
   - Actions: Text color or background highlight
   - Color picker for custom colors
   - Rules saved in browser localStorage
-- **Default**: Red for negative variance
+  - **Rule Stacking**: One color + one background rule can both apply per column
+- **Rule Priority**: First matching rule wins within each property type (color/background)
 
 ---
 
@@ -508,9 +525,40 @@ python scripts/generate_dashboard.py
 
 ## Documentation Updates
 
-**Last Updated**: 2026-04-29
-**Version**: 1.0.0 (Phase 1 Complete)
+**Last Updated**: 2026-04-29 (Evening Session)
+**Version**: 1.1.0 (Phase 1 Complete + Enhancements)
 **Next Review**: After Phase 2 (Interactivity Features)
+
+### Recent Updates (2026-04-29 Evening)
+
+**3-Month Data Extraction:**
+- Fixed month detection to recognize "Total Budget" column as Month 3
+- Now correctly extracts January, February, and March (cumulative) data
+- 39 records total (3 months × 13 metrics)
+- Resolved issue with hidden junk columns in source Excel file
+
+**Dashboard Enhancements:**
+- Added "Budget vs Actual Comparison" chart (grouped bars, blue vs green)
+- Positioned above Variance Analysis for better workflow
+- Updated Variance Analysis with prominent header and variance-based labels
+- Removed unauthorized Variance % column from data table
+
+**Admin Control Improvements:**
+- Added column selector (Actual or Variance) for each formatting rule
+- Rules can now format both Actual and Variance columns independently
+- Fixed rule stacking: one color + one background rule can both apply
+- First matching rule wins within each property type to prevent conflicts
+
+**Bar Chart Logic Fixes:**
+- Budget vs Actual chart: Labels based on ACTUAL values (Gross Profit/Loss)
+- Variance chart: Labels based on VARIANCE direction (Gross Loss Variance when negative)
+- Variance colors: Based on performance (cost metrics inverted)
+- Bars correctly extend below zero for negative variances
+
+**Technical Improvements:**
+- Excel database extraction script created (extract_to_excel_database.py)
+- Ready for accumulating data over time in Excel format
+- Self-contained dashboard with embedded JSON data
 
 ---
 
