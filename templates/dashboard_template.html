@@ -668,9 +668,25 @@
                 `;
                 container.appendChild(div);
             });
+
+            // Load saved rules back into UI
+            loadSavedRulesIntoUI();
         }
 
-        function addRule(metric) {
+        function loadSavedRulesIntoUI() {
+            const ytd = dashboardData.ytd_data;
+            const metrics = Object.keys(ytd);
+
+            metrics.forEach(metric => {
+                if (formattingRules[metric]) {
+                    formattingRules[metric].forEach(rule => {
+                        addRule(metric, rule);
+                    });
+                }
+            });
+        }
+
+        function addRule(metric, ruleData = null) {
             const safeMetric = metric.replace(/[^a-zA-Z0-9]/g, '_');
             const container = document.getElementById(`rules-${safeMetric}`);
             const ruleCount = container.querySelectorAll('.rule').length;
@@ -683,20 +699,23 @@
             const ruleDiv = document.createElement('div');
             ruleDiv.className = 'rule';
             ruleDiv.style.marginTop = '10px';
+            ruleDiv.style.padding = '10px';
+            ruleDiv.style.background = '#f0f4ff';
+            ruleDiv.style.borderRadius = '5px';
             ruleDiv.innerHTML = `
-                <select class="condition">
-                    <option value=">">Greater than</option>
-                    <option value="<">Less than</option>
-                    <option value=">=">Greater than or equal</option>
-                    <option value="<=">Less than or equal</option>
-                    <option value="=">Equal to</option>
+                <select class="condition" style="margin-right: 5px;">
+                    <option value=">" ${ruleData?.condition === '>' ? 'selected' : ''}>Greater than</option>
+                    <option value="<" ${ruleData?.condition === '<' ? 'selected' : ''}>Less than</option>
+                    <option value=">=" ${ruleData?.condition === '>=' ? 'selected' : ''}>Greater than or equal</option>
+                    <option value="<=" ${ruleData?.condition === '<=' ? 'selected' : ''}>Less than or equal</option>
+                    <option value="=" ${ruleData?.condition === '=' ? 'selected' : ''}>Equal to</option>
                 </select>
-                <input type="number" placeholder="Value" class="value" step="any">
-                <select class="action">
-                    <option value="color">Text Color</option>
-                    <option value="background">Highlight</option>
+                <input type="number" placeholder="Value" class="value" step="any" value="${ruleData?.value || ''}" style="margin-right: 5px; width: 100px;">
+                <select class="action" style="margin-right: 5px;">
+                    <option value="color" ${ruleData?.action === 'color' ? 'selected' : ''}>Text Color</option>
+                    <option value="background" ${ruleData?.action === 'background' ? 'selected' : ''}>Highlight</option>
                 </select>
-                <input type="color" class="color" value="#f56565">
+                <input type="color" class="color" value="${ruleData?.color || '#f56565'}" style="margin-right: 5px;">
                 <button onclick="this.parentElement.remove()" style="background: #f56565; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Remove</button>
             `;
             container.insertBefore(ruleDiv, container.lastElementChild);
