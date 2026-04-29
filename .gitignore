@@ -70,3 +70,6 @@ n8n-data/
 tmp/
 temp/
 *.tmp
+
+# Project Documentation (Internal)
+CLAUDE.md
