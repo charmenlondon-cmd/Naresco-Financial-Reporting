@@ -69,10 +69,21 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             margin-bottom: 20px;
             display: none;
+            max-height: 70vh;
+            overflow-y: auto;
         }
 
         .admin-panel.active {
             display: block;
+        }
+
+        .admin-buttons {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            padding: 15px 0 0 0;
+            margin-top: 20px;
+            border-top: 2px solid #1e40af;
         }
 
         .admin-panel h3 {
@@ -235,11 +246,11 @@
                 <!-- Rules will be generated dynamically -->
             </div>
 
-            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
-                <button onclick="applyFormatting()" style="background: #48bb78; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 14px;">
+            <div class="admin-buttons">
+                <button onclick="applyFormatting()" style="background: #48bb78; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     ✓ Apply Formatting
                 </button>
-                <button onclick="resetFormatting()" style="background: #f56565; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: 600; font-size: 14px;">
+                <button onclick="resetFormatting()" style="background: #f56565; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; margin-left: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     ✗ Reset to Defaults
                 </button>
             </div>
