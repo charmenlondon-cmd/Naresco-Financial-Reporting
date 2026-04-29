@@ -160,13 +160,14 @@ def extract_metric_data(ws, metric_name, row_num, month_number):
     }
 
 
-def extract_all_metrics(file_path, sheet_name="Detail Budget"):
+def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_months=True):
     """
     Extract all metrics from the Excel file.
 
     Args:
         file_path: Path to Excel file
         sheet_name: Name of sheet to extract from
+        extract_all_months: If True, extract all months; if False, only extract last month
 
     Returns:
         list: List of metric dictionaries in RAW DATA format
@@ -179,63 +180,77 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget"):
 
     ws = wb[sheet_name]
 
-    # Detect which month we're processing
-    month_number, month_name = detect_month_from_columns(ws)
-    print(f"Detected month: {month_name} (Month {month_number})")
+    # Detect total number of months in file
+    total_months, last_month_name = detect_month_from_columns(ws)
+    print(f"Detected {total_months} month(s) of data (last month: {last_month_name})")
+
+    # Determine which months to extract
+    if extract_all_months:
+        months_to_extract = range(1, total_months + 1)
+        print(f"Extracting ALL {total_months} months")
+    else:
+        months_to_extract = [total_months]
+        print(f"Extracting only last month: {last_month_name}")
 
     extracted_data = []
 
-    # Extract each metric
-    for metric_name in METRIC_NAMES:
-        print(f"Searching for metric: {metric_name}")
+    # Extract each month
+    for month_number in months_to_extract:
+        month_name = MONTH_NAMES[month_number - 1]
+        print(f"\n--- Processing {month_name} (Month {month_number}) ---")
 
-        # Find the metric row
-        row_num = find_metric_row(ws, metric_name)
+        # Extract each metric for this month
+        for metric_name in METRIC_NAMES:
+            print(f"  Searching for metric: {metric_name}")
 
-        if row_num is None:
-            print(f"  WARNING: Metric '{metric_name}' not found. Skipping.")
-            continue
+            # Find the metric row
+            row_num = find_metric_row(ws, metric_name)
 
-        print(f"  [OK] Found at row {row_num}")
+            if row_num is None:
+                print(f"    WARNING: Metric '{metric_name}' not found. Skipping.")
+                continue
 
-        # Extract the metric data
-        data = extract_metric_data(ws, metric_name, row_num, month_number)
+            print(f"    [OK] Found at row {row_num}")
 
-        # Add to results
-        extracted_data.append({
-            "Month": month_name,
-            "DataPoint": metric_name,
-            "DashboardName": DASHBOARD_NAMES.get(metric_name, metric_name),
-            "Budget": data["budget"],
-            "Actual": data["actual"],
-            "Variance": data["variance"]
-        })
+            # Extract the metric data for this specific month
+            data = extract_metric_data(ws, metric_name, row_num, month_number)
 
-        # Check for percentage in row below
-        if metric_name in PERCENTAGE_ABBREVIATIONS:
-            percentage_row = row_num + 1
-            percentage_cell = ws.cell(percentage_row, 1).value
+            # Add to results
+            extracted_data.append({
+                "Month": month_name,
+                "DataPoint": metric_name,
+                "DashboardName": DASHBOARD_NAMES.get(metric_name, metric_name),
+                "Budget": data["budget"],
+                "Actual": data["actual"],
+                "Variance": data["variance"]
+            })
 
-            # Check if next row contains "%"
-            if percentage_cell and "%" in str(percentage_cell):
-                print(f"  [OK] Found percentage at row {percentage_row}")
+            # Check for percentage in row below
+            if metric_name in PERCENTAGE_ABBREVIATIONS:
+                percentage_row = row_num + 1
+                percentage_cell = ws.cell(percentage_row, 1).value
 
-                # Extract percentage data
-                pct_data = extract_metric_data(ws, f"{metric_name} %", percentage_row, month_number)
-                pct_abbrev = PERCENTAGE_ABBREVIATIONS[metric_name]
+                # Check if next row contains "%"
+                if percentage_cell and "%" in str(percentage_cell):
+                    print(f"    [OK] Found percentage at row {percentage_row}")
 
-                extracted_data.append({
-                    "Month": month_name,
-                    "DataPoint": pct_abbrev,
-                    "DashboardName": DASHBOARD_NAMES.get(pct_abbrev, pct_abbrev),
-                    "Budget": pct_data["budget"],
-                    "Actual": pct_data["actual"],
-                    "Variance": pct_data["variance"]
-                })
+                    # Extract percentage data
+                    pct_data = extract_metric_data(ws, f"{metric_name} %", percentage_row, month_number)
+                    pct_abbrev = PERCENTAGE_ABBREVIATIONS[metric_name]
+
+                    extracted_data.append({
+                        "Month": month_name,
+                        "DataPoint": pct_abbrev,
+                        "DashboardName": DASHBOARD_NAMES.get(pct_abbrev, pct_abbrev),
+                        "Budget": pct_data["budget"],
+                        "Actual": pct_data["actual"],
+                        "Variance": pct_data["variance"]
+                    })
 
     wb.close()
 
-    print(f"\n[OK] Extracted {len(extracted_data)} metrics for {month_name}")
+    unique_months = sorted(set(record['Month'] for record in extracted_data))
+    print(f"\n[OK] Extracted {len(extracted_data)} total records for {len(unique_months)} month(s): {', '.join(unique_months)}")
 
     return extracted_data
 
@@ -276,6 +291,17 @@ def main():
         default="Detail Budget",
         help="Sheet name to extract from (default: Detail Budget)"
     )
+    parser.add_argument(
+        "--all-months",
+        action="store_true",
+        default=True,
+        help="Extract all months (default: True)"
+    )
+    parser.add_argument(
+        "--last-month-only",
+        action="store_true",
+        help="Extract only the last month (overrides --all-months)"
+    )
 
     args = parser.parse_args()
 
@@ -284,8 +310,11 @@ def main():
     print("="*60)
 
     try:
+        # Determine extraction mode
+        extract_all = not args.last_month_only
+
         # Extract data
-        data = extract_all_metrics(args.input, args.sheet)
+        data = extract_all_metrics(args.input, args.sheet, extract_all_months=extract_all)
 
         # Save to JSON
         save_to_json(data, args.output)
