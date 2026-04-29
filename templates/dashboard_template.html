@@ -953,18 +953,30 @@
                 varianceCell.style.color = '';
                 varianceCell.style.background = '';
 
-                // Apply custom rules
+                // Apply custom rules (first matching rule per property type wins)
                 if (formattingRules[metric]) {
+                    const appliedStyles = {
+                        actualColor: false,
+                        actualBackground: false,
+                        varianceColor: false,
+                        varianceBackground: false
+                    };
+
                     formattingRules[metric].forEach(rule => {
                         const targetCell = rule.column === 'actual' ? actualCell : varianceCell;
                         const targetValue = rule.column === 'actual' ? actual : variance;
+                        const styleKey = rule.column === 'actual'
+                            ? (rule.action === 'color' ? 'actualColor' : 'actualBackground')
+                            : (rule.action === 'color' ? 'varianceColor' : 'varianceBackground');
 
-                        if (checkCondition(targetValue, rule.condition, rule.value)) {
+                        // Only apply if this style hasn't been set yet and condition matches
+                        if (!appliedStyles[styleKey] && checkCondition(targetValue, rule.condition, rule.value)) {
                             if (rule.action === 'color') {
                                 targetCell.style.color = rule.color;
                             } else {
                                 targetCell.style.background = rule.color;
                             }
+                            appliedStyles[styleKey] = true;
                         }
                     });
                 }
