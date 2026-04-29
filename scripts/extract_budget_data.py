@@ -76,8 +76,11 @@ def detect_month_from_columns(ws, budget_header_row=11):
 
     for col in range(2, max_col + 1):  # Start from column 2 (after labels)
         cell_value = ws.cell(budget_header_row, col).value
-        if cell_value and str(cell_value).strip().lower() == "budget":
-            month_count += 1
+        if cell_value:
+            cell_str = str(cell_value).strip().lower()
+            # Match both "Budget" and "Total Budget"
+            if cell_str == "budget" or "budget" in cell_str:
+                month_count += 1
 
     if month_count < 1:
         raise ValueError("No 'Budget' headers found in file. Check file structure.")
