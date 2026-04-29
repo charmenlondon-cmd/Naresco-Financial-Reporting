@@ -543,17 +543,29 @@
             const variances = metrics.map(m => ytd[m]?.variance || 0);
 
             // Create gradient colors for bars
-            // For COST metrics: positive variance = bad (red), negative = good (green)
-            // For REVENUE/PROFIT metrics: positive variance = good (green), negative = bad (red)
+            // Color logic:
+            // - For Profit/Loss metrics: color matches label (Profit=green, Loss=red based on ACTUAL value)
+            // - For Cost metrics: positive variance = bad (red), negative = good (green)
+            // - For Revenue/Margin metrics: positive variance = good (green), negative = bad (red)
             const backgroundColors = variances.map((v, i) => {
                 const gradient = ctx.createLinearGradient(0, 0, 0, 400);
                 const metricName = metrics[i].toLowerCase();
+                const metric = metrics[i];
                 const isCostMetric = metricName.includes('cost');
 
-                // Invert colors for cost metrics
-                const isGood = isCostMetric ? (v < 0) : (v >= 0);
+                // For Profit/Loss metrics, color based on ACTUAL value (matches dynamic label)
+                const isProfitLossMetric = metric === 'Gross Profit / (Loss)' || metric === 'Net Surplus / (Deflect)';
+                let isGreen;
 
-                if (isGood) {
+                if (isProfitLossMetric) {
+                    const actual = ytd[metric].actual;
+                    isGreen = actual >= 0;  // Green if profit, red if loss
+                } else {
+                    // Standard variance logic: cost metrics inverted
+                    isGreen = isCostMetric ? (v < 0) : (v >= 0);
+                }
+
+                if (isGreen) {
                     gradient.addColorStop(0, '#22c55e');
                     gradient.addColorStop(1, '#16a34a');
                 } else {
@@ -565,9 +577,19 @@
 
             const borderColors = variances.map((v, i) => {
                 const metricName = metrics[i].toLowerCase();
+                const metric = metrics[i];
                 const isCostMetric = metricName.includes('cost');
-                const isGood = isCostMetric ? (v < 0) : (v >= 0);
-                return isGood ? '#16a34a' : '#dc2626';
+                const isProfitLossMetric = metric === 'Gross Profit / (Loss)' || metric === 'Net Surplus / (Deflect)';
+
+                let isGreen;
+                if (isProfitLossMetric) {
+                    const actual = ytd[metric].actual;
+                    isGreen = actual >= 0;
+                } else {
+                    isGreen = isCostMetric ? (v < 0) : (v >= 0);
+                }
+
+                return isGreen ? '#16a34a' : '#dc2626';
             });
 
             new Chart(ctx, {
@@ -682,7 +704,7 @@
                 row.innerHTML = `
                     <td class="metric-name">${getDynamicLabel(metricKey, ytd)}</td>
                     <td class="number">${formatNumber(data.budget, format)}</td>
-                    <td class="number">${formatNumber(data.actual, format)}</td>
+                    <td class="number actual-cell" data-actual="${data.actual}">${formatNumber(data.actual, format)}</td>
                     <td class="number variance-cell" data-variance="${data.variance}">${formatNumber(data.variance, format)}</td>
                 `;
                 tbody.appendChild(row);
@@ -743,6 +765,10 @@
             ruleDiv.style.background = '#f0f4ff';
             ruleDiv.style.borderRadius = '5px';
             ruleDiv.innerHTML = `
+                <select class="column-target" style="margin-right: 5px;">
+                    <option value="actual" ${ruleData?.column === 'actual' ? 'selected' : ''}>Actual</option>
+                    <option value="variance" ${ruleData?.column === 'variance' ? 'selected' : ''}>Variance</option>
+                </select>
                 <select class="condition" style="margin-right: 5px;">
                     <option value=">" ${ruleData?.condition === '>' ? 'selected' : ''}>Greater than</option>
                     <option value="<" ${ruleData?.condition === '<' ? 'selected' : ''}>Less than</option>
@@ -774,6 +800,7 @@
                 const rules = [];
                 container.querySelectorAll('.rule').forEach(ruleDiv => {
                     rules.push({
+                        column: ruleDiv.querySelector('.column-target').value,
                         condition: ruleDiv.querySelector('.condition').value,
                         value: parseFloat(ruleDiv.querySelector('.value').value),
                         action: ruleDiv.querySelector('.action').value,
@@ -800,21 +827,29 @@
 
             rows.forEach(row => {
                 const metric = row.getAttribute('data-metric');
+                const actualCell = row.querySelector('.actual-cell');
                 const varianceCell = row.querySelector('.variance-cell');
+
+                const actual = parseFloat(actualCell.getAttribute('data-actual'));
                 const variance = parseFloat(varianceCell.getAttribute('data-variance'));
 
-                // Reset styles
+                // Reset styles for both columns
+                actualCell.style.color = '';
+                actualCell.style.background = '';
                 varianceCell.style.color = '';
                 varianceCell.style.background = '';
 
                 // Apply custom rules
                 if (formattingRules[metric]) {
                     formattingRules[metric].forEach(rule => {
-                        if (checkCondition(variance, rule.condition, rule.value)) {
+                        const targetCell = rule.column === 'actual' ? actualCell : varianceCell;
+                        const targetValue = rule.column === 'actual' ? actual : variance;
+
+                        if (checkCondition(targetValue, rule.condition, rule.value)) {
                             if (rule.action === 'color') {
-                                varianceCell.style.color = rule.color;
+                                targetCell.style.color = rule.color;
                             } else {
-                                varianceCell.style.background = rule.color;
+                                targetCell.style.background = rule.color;
                             }
                         }
                     });
