@@ -1,0 +1,7 @@
+{
+  "buildCommand": "echo 'Using pre-built dashboard'",
+  "outputDirectory": "dashboard",
+  "devCommand": "python -m http.server 3000 --directory dashboard",
+  "framework": null,
+  "installCommand": "echo 'No installation needed for static site'"
+}
