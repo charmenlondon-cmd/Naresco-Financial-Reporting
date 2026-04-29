@@ -532,7 +532,7 @@
       "dashboard_name": "Net Profit / Loss %"
     }
   },
-  "generated_at": "2026-04-29 13:03:14"
+  "generated_at": "2026-04-29 13:57:49"
 };
 
         // Formatting rules storage
@@ -562,8 +562,8 @@
             // Generate admin controls
             generateAdminControls();
 
-            // Apply saved formatting
-            applyFormatting();
+            // Apply saved formatting silently on load
+            applyFormattingToTable();
         }
 
         function generateKPICards() {
