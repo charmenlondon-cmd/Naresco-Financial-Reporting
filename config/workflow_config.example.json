@@ -1,0 +1,42 @@
+{
+  "company": "Mudin Al Emarati",
+  "file_patterns": {
+    "budget_vs_actual": "*Budget vs Actual File*.xlsx"
+  },
+  "source_folder": "./",
+  "output_folder": "./dashboard/data",
+  "metric_names": [
+    "Total Revenue",
+    "Total Variable Cost",
+    "TVC %",
+    "Contribution Margin",
+    "CM %",
+    "Total Staff Cost (Direct)",
+    "TSCD %",
+    "Gross Profit / (Loss)",
+    "GP %",
+    "Total Fixed Cost (Indirect)",
+    "TFCI %",
+    "Net Surplus / (Deflect)",
+    "NSD %"
+  ],
+  "dashboard_labels": {
+    "Total Revenue": "Total Revnue",
+    "Total Variable Cost": "Variable Cost",
+    "TVC %": "Variable Cost %",
+    "Contribution Margin": "Contribution Margin",
+    "CM %": "Contribution Margin %",
+    "Total Staff Cost (Direct)": "Fixed Costs (Direct)",
+    "TSCD %": "Fixed Costs (Direct) %",
+    "Gross Profit / (Loss)": "Gross Profit / Loss",
+    "GP %": "Gross Profit / Loss %",
+    "Total Fixed Cost (Indirect)": "Fixed Costs (Indirect)",
+    "TFCI %": "Fixed Costs (Indirect) %",
+    "Net Surplus / (Deflect)": "Net Profit / Loss",
+    "NSD %": "Net Profit / Loss %"
+  },
+  "google_drive": {
+    "folder_id": "YOUR_FOLDER_ID_HERE",
+    "credentials_path": "./config/google-credentials.json"
+  }
+}

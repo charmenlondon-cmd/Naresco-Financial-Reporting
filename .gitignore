@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+ENV/
+env/
+
+# Financial Data (DO NOT COMMIT)
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+data/raw-data.json
+data/calculations.json
+dashboard/data/*.json
+*_values.xlsx
+
+# Credentials & Secrets
+config/workflow_config.json
+config/google-credentials.json
+.env
+.env.local
+*.key
+*.pem
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# n8n
+n8n-data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
