@@ -261,9 +261,17 @@
             <!-- KPIs will be generated dynamically -->
         </div>
 
+        <!-- Budget vs Actual Comparison Chart -->
+        <div class="chart-container">
+            <h2 style="font-size: 24px; font-weight: 700; color: #1e3a8a; margin-bottom: 20px;">Budget vs Actual Comparison</h2>
+            <div class="chart-wrapper">
+                <canvas id="budgetActualChart"></canvas>
+            </div>
+        </div>
+
         <!-- Variance Analysis Chart -->
         <div class="chart-container">
-            <h2>Variance Analysis by Category</h2>
+            <h2 style="font-size: 24px; font-weight: 700; color: #1e3a8a; margin-bottom: 20px;">Variance Analysis</h2>
             <div class="chart-wrapper">
                 <canvas id="varianceChart"></canvas>
             </div>
@@ -315,6 +323,7 @@
             generateKPICards();
 
             // Generate charts
+            generateBudgetActualChart();
             generateVarianceChart();
 
             // Generate data table
@@ -510,8 +519,8 @@
             });
         }
 
-        function generateVarianceChart() {
-            const ctx = document.getElementById('varianceChart').getContext('2d');
+        function generateBudgetActualChart() {
+            const ctx = document.getElementById('budgetActualChart').getContext('2d');
             const ytd = dashboardData.ytd_data;
 
             const metrics = [
@@ -527,10 +536,9 @@
             // Apply dynamic labels based on ACTUAL values
             const labels = metrics.map(m => {
                 if (!ytd[m]) return m;
-
                 const actual = ytd[m].actual;
 
-                // Dynamic labels for Profit/Loss metrics
+                // Dynamic labels for Profit/Loss metrics based on ACTUAL
                 if (m === 'Gross Profit / (Loss)') {
                     return actual >= 0 ? 'Gross Profit' : 'Gross Loss';
                 }
@@ -540,32 +548,148 @@
 
                 return ytd[m].dashboard_name || m;
             });
+
+            const budgets = metrics.map(m => ytd[m]?.budget || 0);
+            const actuals = metrics.map(m => ytd[m]?.actual || 0);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Budget',
+                        data: budgets,
+                        backgroundColor: '#93c5fd',
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }, {
+                        label: 'Actual',
+                        data: actuals,
+                        backgroundColor: '#86efac',
+                        borderColor: '#22c55e',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 13,
+                                    weight: '600',
+                                    family: 'Inter'
+                                },
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'rectRounded'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14,
+                                weight: '600'
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': AED ' + context.parsed.y.toLocaleString('en-AE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12,
+                                    weight: '500'
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12,
+                                    weight: '500'
+                                },
+                                callback: function(value) {
+                                    return 'AED ' + value.toLocaleString('en-AE', {notation: 'compact', compactDisplay: 'short'});
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+        }
+
+        function generateVarianceChart() {
+            const ctx = document.getElementById('varianceChart').getContext('2d');
+            const ytd = dashboardData.ytd_data;
+
+            const metrics = [
+                'Total Revenue',
+                'Total Variable Cost',
+                'Contribution Margin',
+                'Total Staff Cost (Direct)',
+                'Gross Profit / (Loss)',
+                'Total Fixed Cost (Indirect)',
+                'Net Surplus / (Deflect)'
+            ];
+
+            // Apply dynamic labels based on VARIANCE values (for variance chart)
+            const labels = metrics.map(m => {
+                if (!ytd[m]) return m;
+
+                const variance = ytd[m].variance;
+
+                // Dynamic labels for Profit/Loss metrics based on VARIANCE direction
+                if (m === 'Gross Profit / (Loss)') {
+                    return variance >= 0 ? 'Gross Profit Variance' : 'Gross Loss Variance';
+                }
+                if (m === 'Net Surplus / (Deflect)') {
+                    return variance >= 0 ? 'Net Profit Variance' : 'Net Loss Variance';
+                }
+
+                return ytd[m].dashboard_name || m;
+            });
             const variances = metrics.map(m => ytd[m]?.variance || 0);
 
-            // Create gradient colors for bars
-            // Color logic:
-            // - For Profit/Loss metrics: color matches label (Profit=green, Loss=red based on ACTUAL value)
-            // - For Cost metrics: positive variance = bad (red), negative = good (green)
-            // - For Revenue/Margin metrics: positive variance = good (green), negative = bad (red)
+            // Create gradient colors for bars based on variance direction
+            // Color logic for VARIANCE:
+            // - Cost metrics: positive variance = bad (red), negative = good (green)
+            // - Revenue/Profit/Margin metrics: positive variance = good (green), negative = bad (red)
             const backgroundColors = variances.map((v, i) => {
                 const gradient = ctx.createLinearGradient(0, 0, 0, 400);
                 const metricName = metrics[i].toLowerCase();
-                const metric = metrics[i];
                 const isCostMetric = metricName.includes('cost');
 
-                // For Profit/Loss metrics, color based on ACTUAL value (matches dynamic label)
-                const isProfitLossMetric = metric === 'Gross Profit / (Loss)' || metric === 'Net Surplus / (Deflect)';
-                let isGreen;
+                // Determine if variance is good or bad
+                // For costs: negative variance (under budget) is good
+                // For revenue/profit: positive variance (over budget) is good
+                const isGood = isCostMetric ? (v < 0) : (v >= 0);
 
-                if (isProfitLossMetric) {
-                    const actual = ytd[metric].actual;
-                    isGreen = actual >= 0;  // Green if profit, red if loss
-                } else {
-                    // Standard variance logic: cost metrics inverted
-                    isGreen = isCostMetric ? (v < 0) : (v >= 0);
-                }
-
-                if (isGreen) {
+                if (isGood) {
                     gradient.addColorStop(0, '#22c55e');
                     gradient.addColorStop(1, '#16a34a');
                 } else {
@@ -577,19 +701,9 @@
 
             const borderColors = variances.map((v, i) => {
                 const metricName = metrics[i].toLowerCase();
-                const metric = metrics[i];
                 const isCostMetric = metricName.includes('cost');
-                const isProfitLossMetric = metric === 'Gross Profit / (Loss)' || metric === 'Net Surplus / (Deflect)';
-
-                let isGreen;
-                if (isProfitLossMetric) {
-                    const actual = ytd[metric].actual;
-                    isGreen = actual >= 0;
-                } else {
-                    isGreen = isCostMetric ? (v < 0) : (v >= 0);
-                }
-
-                return isGreen ? '#16a34a' : '#dc2626';
+                const isGood = isCostMetric ? (v < 0) : (v >= 0);
+                return isGood ? '#16a34a' : '#dc2626';
             });
 
             new Chart(ctx, {
