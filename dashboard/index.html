@@ -631,7 +631,7 @@
       "dashboard_name": "Net Profit / Loss %"
     }
   },
-  "generated_at": "2026-04-30 07:56:32"
+  "generated_at": "2026-04-30 08:00:40"
 };
 
         // Formatting rules storage
@@ -1260,10 +1260,8 @@
             // Save to localStorage
             localStorage.setItem('formattingRules', JSON.stringify(formattingRules));
 
-            // Apply to table
-            applyFormattingToTable();
-
-            alert('Formatting applied!');
+            // Refresh page to apply all rules cleanly
+            location.reload();
         }
 
         function applyFormattingToTable() {
@@ -1327,8 +1325,9 @@
         function resetFormatting() {
             formattingRules = {};
             localStorage.removeItem('formattingRules');
-            applyFormattingToTable();
-            alert('Formatting reset to defaults!');
+
+            // Refresh page to show clean table
+            location.reload();
         }
 
         function toggleAdmin() {

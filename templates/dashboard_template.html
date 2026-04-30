@@ -931,10 +931,8 @@
             // Save to localStorage
             localStorage.setItem('formattingRules', JSON.stringify(formattingRules));
 
-            // Apply to table
-            applyFormattingToTable();
-
-            alert('Formatting applied!');
+            // Refresh page to apply all rules cleanly
+            location.reload();
         }
 
         function applyFormattingToTable() {
@@ -998,8 +996,9 @@
         function resetFormatting() {
             formattingRules = {};
             localStorage.removeItem('formattingRules');
-            applyFormattingToTable();
-            alert('Formatting reset to defaults!');
+
+            // Refresh page to show clean table
+            location.reload();
         }
 
         function toggleAdmin() {
