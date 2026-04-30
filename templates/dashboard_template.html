@@ -666,10 +666,10 @@
 
                 // Dynamic labels for Profit/Loss metrics based on VARIANCE direction
                 if (m === 'Gross Profit / (Loss)') {
-                    return variance >= 0 ? 'Gross Profit Variance' : 'Gross Loss Variance';
+                    return variance >= 0 ? 'Gross Profit' : 'Gross Loss';
                 }
                 if (m === 'Net Surplus / (Deflect)') {
-                    return variance >= 0 ? 'Net Profit Variance' : 'Net Loss Variance';
+                    return variance >= 0 ? 'Net Profit' : 'Net Loss';
                 }
 
                 return ytd[m].dashboard_name || m;
