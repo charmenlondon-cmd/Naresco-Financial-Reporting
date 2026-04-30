@@ -371,6 +371,7 @@
             if (!ytdData[metricKey]) return metricKey;
 
             const actual = ytdData[metricKey].actual;
+            const dashboardName = ytdData[metricKey].dashboard_name || metricKey;
 
             if (metricKey === 'Gross Profit / (Loss)') {
                 return actual >= 0 ? 'Gross Profit' : 'Gross Loss';
@@ -379,7 +380,7 @@
                 return actual >= 0 ? 'Net Profit' : 'Net Loss';
             }
 
-            return metricKey;
+            return dashboardName;
         }
 
         function generateTrendChart() {
