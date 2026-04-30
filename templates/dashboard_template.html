@@ -33,6 +33,19 @@
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header-logo {
+            height: 60px;
+            width: auto;
+            flex-shrink: 0;
+        }
+
+        .header-content {
+            flex-grow: 1;
         }
 
         .header h1 {
@@ -273,11 +286,14 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <button class="admin-toggle" onclick="toggleAdmin()">Settings</button>
-            <h1>Budget vs Actual Dashboard</h1>
-            <div class="meta">
-                <span id="period-label"></span> |
-                Generated: <span id="generated-time"></span>
+            <img src="naresco-logo.png" alt="Naresco Logo" class="header-logo">
+            <div class="header-content">
+                <button class="admin-toggle" onclick="toggleAdmin()">Settings</button>
+                <h1>Budget vs Actual Dashboard</h1>
+                <div class="meta">
+                    <span id="period-label"></span> |
+                    Generated: <span id="generated-time"></span>
+                </div>
             </div>
         </div>
 
