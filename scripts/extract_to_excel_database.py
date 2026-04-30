@@ -129,7 +129,7 @@ def extract_metric_value(ws, row_num, month_num, value_type='budget'):
 def extract_from_source(file_path, sheet_name="Detail Budget"):
     """
     Extract all data from source Excel file.
-    Returns DataFrame ready to append to RAW DATA sheet.
+    Returns DataFrame ready to append to BVA_DATA sheet.
     """
     print(f"Loading source file: {file_path}")
     wb = openpyxl.load_workbook(file_path, data_only=True)
@@ -200,7 +200,7 @@ def extract_from_source(file_path, sheet_name="Detail Budget"):
 
 def append_to_database(df, database_path):
     """
-    Append extracted data to Excel database RAW DATA sheet.
+    Append extracted data to Excel database BVA_DATA sheet.
     Creates database if it doesn't exist.
     """
     database_path = Path(database_path)
@@ -210,18 +210,18 @@ def append_to_database(df, database_path):
         print(f"\nAppending to existing database: {database_path}")
         wb = load_workbook(database_path)
 
-        # Get or create RAW DATA sheet
-        if 'RAW DATA' in wb.sheetnames:
-            ws = wb['RAW DATA']
+        # Get or create BVA_DATA sheet
+        if 'BVA_DATA' in wb.sheetnames:
+            ws = wb['BVA_DATA']
             start_row = ws.max_row + 1
         else:
-            ws = wb.create_sheet('RAW DATA', 0)
+            ws = wb.create_sheet('BVA_DATA', 0)
             start_row = 1
     else:
         print(f"\nCreating new database: {database_path}")
         wb = Workbook()
         ws = wb.active
-        ws.title = 'RAW DATA'
+        ws.title = 'BVA_DATA'
         start_row = 1
 
     # Write data
@@ -233,22 +233,22 @@ def append_to_database(df, database_path):
     wb.save(database_path)
     wb.close()
 
-    print(f"[OK] Data appended to RAW DATA sheet (starting row {start_row})")
+    print(f"[OK] Data appended to BVA_DATA sheet (starting row {start_row})")
     print(f"[OK] Database saved: {database_path}")
 
 
 def create_calculations_sheet(database_path):
     """
-    Create CALCULATIONS sheet with formulas (SUMIF/AVERAGEIF).
+    Create BVA_CALC sheet with formulas (SUMIF/AVERAGEIF).
     """
     wb = load_workbook(database_path)
 
-    # Create CALCULATIONS sheet if it doesn't exist
-    if 'CALCULATIONS' in wb.sheetnames:
-        ws = wb['CALCULATIONS']
+    # Create BVA_CALC sheet if it doesn't exist
+    if 'BVA_CALC' in wb.sheetnames:
+        ws = wb['BVA_CALC']
         ws.delete_rows(1, ws.max_row)  # Clear existing
     else:
-        ws = wb.create_sheet('CALCULATIONS')
+        ws = wb.create_sheet('BVA_CALC')
 
     # Headers
     ws.append(['DataPoint', 'DashboardName', 'YTD_BUDGET', 'YTD_ACTUAL', 'YTD_VARIANCE'])
@@ -264,9 +264,9 @@ def create_calculations_sheet(database_path):
         # Main metric (SUM)
         ws.cell(row, 1, metric)
         ws.cell(row, 2, config['dashboard_name'])
-        ws.cell(row, 3, f'=SUMIF(\'RAW DATA\'!B:B,A{row},\'RAW DATA\'!E:E)')
-        ws.cell(row, 4, f'=SUMIF(\'RAW DATA\'!B:B,A{row},\'RAW DATA\'!F:F)')
-        ws.cell(row, 5, f'=SUMIF(\'RAW DATA\'!B:B,A{row},\'RAW DATA\'!G:G)')
+        ws.cell(row, 3, f'=SUMIF(\'BVA_DATA\'!B:B,A{row},\'BVA_DATA\'!E:E)')
+        ws.cell(row, 4, f'=SUMIF(\'BVA_DATA\'!B:B,A{row},\'BVA_DATA\'!F:F)')
+        ws.cell(row, 5, f'=SUMIF(\'BVA_DATA\'!B:B,A{row},\'BVA_DATA\'!G:G)')
         row += 1
 
         # Percentage (AVERAGE)
@@ -275,15 +275,15 @@ def create_calculations_sheet(database_path):
             pct_dashboard = config['percentage_dashboard']
             ws.cell(row, 1, pct_abbrev)
             ws.cell(row, 2, pct_dashboard)
-            ws.cell(row, 3, f'=AVERAGEIF(\'RAW DATA\'!B:B,A{row},\'RAW DATA\'!E:E)')
-            ws.cell(row, 4, f'=AVERAGEIF(\'RAW DATA\'!B:B,A{row},\'RAW DATA\'!F:F)')
-            ws.cell(row, 5, f'=AVERAGEIF(\'RAW DATA\'!B:B,A{row},\'RAW DATA\'!G:G)')
+            ws.cell(row, 3, f'=AVERAGEIF(\'BVA_DATA\'!B:B,A{row},\'BVA_DATA\'!E:E)')
+            ws.cell(row, 4, f'=AVERAGEIF(\'BVA_DATA\'!B:B,A{row},\'BVA_DATA\'!F:F)')
+            ws.cell(row, 5, f'=AVERAGEIF(\'BVA_DATA\'!B:B,A{row},\'BVA_DATA\'!G:G)')
             row += 1
 
     wb.save(database_path)
     wb.close()
 
-    print(f"[OK] CALCULATIONS sheet created with formulas")
+    print(f"[OK] BVA_CALC sheet created with formulas")
 
 
 def main():
@@ -319,15 +319,15 @@ def main():
         # Append to database
         append_to_database(df, args.database)
 
-        # Create/update CALCULATIONS sheet
+        # Create/update BVA_CALC sheet
         create_calculations_sheet(args.database)
 
         print("\n" + "="*60)
         print("[SUCCESS] DATA EXTRACTED TO EXCEL DATABASE")
         print("="*60)
         print(f"\nDatabase: {args.database}")
-        print("  - RAW DATA sheet: Accumulated monthly data")
-        print("  - CALCULATIONS sheet: YTD formulas (SUMIF/AVERAGEIF)")
+        print("  - BVA_DATA sheet: Accumulated monthly data")
+        print("  - BVA_CALC sheet: YTD formulas (SUMIF/AVERAGEIF)")
 
     except Exception as e:
         print(f"\n[ERROR] {e}")
