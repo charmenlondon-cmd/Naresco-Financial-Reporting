@@ -631,7 +631,7 @@
       "dashboard_name": "Net Profit / Loss %"
     }
   },
-  "generated_at": "2026-04-30 08:00:40"
+  "generated_at": "2026-04-30 08:07:57"
 };
 
         // Formatting rules storage
@@ -1220,7 +1220,7 @@
                     <option value="<=" ${ruleData?.condition === '<=' ? 'selected' : ''}>Less than or equal</option>
                     <option value="=" ${ruleData?.condition === '=' ? 'selected' : ''}>Equal to</option>
                 </select>
-                <input type="number" placeholder="Value" class="value" step="any" value="${ruleData?.value || ''}" style="margin-right: 5px; width: 100px;">
+                <input type="number" placeholder="Value" class="value" step="any" value="${ruleData?.value ?? ''}" style="margin-right: 5px; width: 100px;">
                 <select class="action" style="margin-right: 5px;">
                     <option value="color" ${ruleData?.action === 'color' ? 'selected' : ''}>Text Color</option>
                     <option value="background" ${ruleData?.action === 'background' ? 'selected' : ''}>Highlight</option>
