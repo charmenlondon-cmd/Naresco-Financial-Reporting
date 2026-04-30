@@ -123,7 +123,20 @@
             background: white;
             padding: 25px;
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .kpi-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .kpi-card:active {
+            transform: translateY(0px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.06);
         }
 
         .kpi-label {
@@ -212,6 +225,25 @@
             text-align: right;
             font-family: 'Inter', sans-serif;
             font-variant-numeric: tabular-nums;
+        }
+
+        table tr.highlighted {
+            background-color: #dbeafe !important;
+            transition: background-color 0.5s ease;
+        }
+
+        table tr.highlighted td {
+            position: relative;
+        }
+
+        table tr.highlighted td:first-child::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #3b82f6;
         }
 
         .variance-positive {
@@ -363,6 +395,7 @@
 
                 const card = document.createElement('div');
                 card.className = 'kpi-card';
+                card.setAttribute('data-metric', kpi.key);
                 card.innerHTML = `
                     <div class="kpi-label">${kpi.label}</div>
                     <div class="kpi-value">${formatNumber(data.actual, kpi.format)}</div>
@@ -370,6 +403,12 @@
                         ${varianceSign}${formatNumber(data.variance, kpi.format)} vs Budget
                     </div>
                 `;
+
+                // Add click handler to scroll to and highlight row
+                card.addEventListener('click', function() {
+                    highlightTableRow(kpi.key);
+                });
+
                 grid.appendChild(card);
             });
         }
@@ -997,6 +1036,33 @@
                 case '<=': return value <= target;
                 case '=': return value === target;
                 default: return false;
+            }
+        }
+
+        function highlightTableRow(metricKey) {
+            // Remove any existing highlights
+            document.querySelectorAll('table tr.highlighted').forEach(row => {
+                row.classList.remove('highlighted');
+            });
+
+            // Find and highlight the target row
+            const targetRow = document.querySelector(`table tr[data-metric="${metricKey}"]`);
+            if (targetRow) {
+                targetRow.classList.add('highlighted');
+
+                // Scroll to the table smoothly
+                const tableContainer = document.querySelector('.data-table');
+                if (tableContainer) {
+                    tableContainer.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+
+                    // Remove highlight after 4 seconds
+                    setTimeout(() => {
+                        targetRow.classList.remove('highlighted');
+                    }, 4000);
+                }
             }
         }
 
