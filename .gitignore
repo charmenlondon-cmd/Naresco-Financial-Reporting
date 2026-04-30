@@ -33,6 +33,8 @@ data/raw-data.json
 data/calculations.json
 dashboard/data/*.json
 *_values.xlsx
+source-files/*.xlsx
+source-files/*.xls
 
 # Credentials & Secrets
 config/workflow_config.json
