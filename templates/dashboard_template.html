@@ -419,9 +419,9 @@
                 card.setAttribute('data-metric', kpi.key);
                 card.innerHTML = `
                     <div class="kpi-label">${kpi.label}</div>
-                    <div class="kpi-value">${formatNumber(data.actual, kpi.format)}</div>
+                    <div class="kpi-value">${formatNumberShorthand(data.actual, kpi.format)}</div>
                     <div class="kpi-variance ${varianceClass}">
-                        ${varianceSign}${formatNumber(data.variance, kpi.format)} vs Budget
+                        ${varianceSign}${formatNumberShorthand(data.variance, kpi.format)} vs Budget
                     </div>
                 `;
 
@@ -1110,6 +1110,34 @@
                 return (value * 100).toFixed(2) + '%';
             }
             return value.toLocaleString();
+        }
+
+        function formatNumberShorthand(value, type) {
+            const absValue = Math.abs(value);
+            const isNegative = value < 0;
+            let formatted = '';
+
+            if (type === 'currency') {
+                if (absValue >= 1000000) {
+                    // Format as millions
+                    const millions = absValue / 1000000;
+                    // Remove trailing zeros from decimal
+                    formatted = 'AED ' + (isNegative ? '-' : '') + parseFloat(millions.toFixed(2)) + 'M';
+                } else if (absValue >= 1000) {
+                    // Format as thousands
+                    const thousands = absValue / 1000;
+                    formatted = 'AED ' + (isNegative ? '-' : '') + parseFloat(thousands.toFixed(2)) + 'K';
+                } else {
+                    // Format normally for small numbers
+                    formatted = 'AED ' + (isNegative ? '-' : '') + parseFloat(absValue.toFixed(2));
+                }
+            } else if (type === 'percent') {
+                return (value * 100).toFixed(2) + '%';
+            } else {
+                formatted = value.toLocaleString();
+            }
+
+            return formatted;
         }
     </script>
 </body>
