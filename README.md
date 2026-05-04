@@ -2,20 +2,22 @@
 
 Automated financial reporting system with dual-path validation for Budget vs Actual dashboards.
 
-**Live Dashboard**: https://naresco-financial-reporting.vercel.app
+**Hosting**: Internal server (secure, on-premises)
 
 ---
 
 ## 🎯 What This Does
 
-Finance team drops a new Excel file → System processes and validates data → Dashboard auto-updates and deploys
+Finance team drops a new Excel file → System processes and validates data → Dashboard auto-updates
 
 **Key Features:**
 - ✅ **One-Click Updates**: Drop file + double-click = Done
 - ✅ **Dual-Path Validation**: Excel + JSON must match before deploying
 - ✅ **Growing Database**: Data accumulates month-over-month
 - ✅ **Interactive Dashboard**: Click KPI cards to jump to details
-- ✅ **Auto-Deployment**: Vercel deploys in ~30 seconds
+- ✅ **Shorthand Formatting**: Fortune 500-style numbers (AED 1.28M vs AED 1,279,576)
+- ✅ **Personalized Views**: Each user customizes their own dashboard settings
+- ✅ **Secure Hosting**: Data stays on-premises, never leaves internal network
 
 ---
 
@@ -60,9 +62,15 @@ Naresco-Financial-Reporting/
 1. **Drop File**: Save new Excel file to `source-files/` folder
 2. **Run Script**: Double-click `update-dashboard.bat`
 3. **Wait**: ~1-2 minutes for processing
-4. **Done**: Dashboard live at https://naresco-financial-reporting.vercel.app
+4. **Done**: Refresh browser to see updated dashboard
 
 **That's it!** The script handles everything automatically.
+
+### **Accessing the Dashboard:**
+
+**Internal Server**: Navigate to your internal dashboard URL (e.g., `http://naresco-server/financial-dashboard`)
+
+**Local Testing**: Run `python -m http.server 8000` in the `dashboard/` folder, then open `http://localhost:8000`
 
 ---
 
@@ -90,13 +98,18 @@ Compare Excel vs JSON
 [DASHBOARD]
 Generate from Excel (validated source)
     ↓
-Git push → Vercel auto-deploy
+Serve via internal web server
 ```
 
 **Why Dual-Path?**
 - Excel = Master (auditable, human-readable)
 - JSON = Independent validation
 - If they don't match = Something is wrong, don't deploy!
+
+**Security:**
+- Data hosted internally on secure on-premises server
+- No external cloud dependencies
+- Full control over access and permissions
 
 ---
 
@@ -146,37 +159,75 @@ Dashboard: Shows Feb + Mar + Apr
 
 ### **Dashboard Features:**
 - **Interactive KPI Cards**: Click to jump to row in table
+- **Shorthand Number Formatting**: Fortune 500-style (AED 1.28M instead of AED 1,279,576)
 - **Budget vs Actual Chart**: Side-by-side comparison
 - **Variance Analysis Chart**: Performance gaps visualization
-- **Data Table**: All metrics with conditional formatting
-- **Admin Controls**: Custom formatting rules (saved in browser)
+- **Data Table**: All metrics with full precision and conditional formatting
+- **Admin Controls**: Custom formatting rules (saved per user in browser)
+- **Personalized Views**: Each user's browser stores their own settings
+
+### **Number Formatting:**
+- **KPI Cards**: Shorthand format (up to 2 decimals, trailing zeros removed)
+  - Millions: AED 1.28M
+  - Thousands: AED 15.5K
+  - Small numbers: AED 250
+- **Detail Table**: Full precision (AED 1,279,576)
+- **Design Philosophy**: "Overview first, details on demand"
 
 ### **Tech Stack:**
 - **Python 3.8+**: pandas, openpyxl
 - **Excel**: Master database with formulas
 - **JavaScript**: Chart.js for visualizations
-- **Hosting**: Vercel (auto-deploy)
-- **Version Control**: Git + GitHub
+- **Hosting**: Internal web server (IIS, Apache, nginx, or Python http.server)
+- **Version Control**: Git (optional)
 
 ---
 
-## 🛠️ Installation (For Developers)
+## 🛠️ Installation & Deployment
 
 ### **Prerequisites:**
 - Python 3.8+
-- Git
+- Web server (IIS, Apache, nginx, or Python's built-in server)
 
 ### **Setup:**
 
 ```bash
-# Clone repository
-git clone https://github.com/charmenlondon-cmd/Naresco-Financial-Reporting.git
-cd Naresco-Financial-Reporting
-
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# Ready to use!
+### **Deployment Options:**
+
+#### **Option 1: Internal Web Server (Recommended)**
+Point your internal web server to the `dashboard/` folder:
+
+**IIS (Windows Server):**
+1. Open IIS Manager
+2. Add new site pointing to `dashboard/` folder
+3. Set internal URL (e.g., `http://naresco-server/financial-dashboard`)
+
+**Apache/nginx:**
+Configure document root to `dashboard/` directory
+
+**Python HTTP Server (Testing):**
+```bash
+cd dashboard
+python -m http.server 8000
+# Access at http://localhost:8000
+```
+
+#### **Option 2: Vercel (Cloud - Alternative)**
+```bash
+# One-time setup
+git clone https://github.com/charmenlondon-cmd/Naresco-Financial-Reporting.git
+cd Naresco-Financial-Reporting
+pip install -r requirements.txt
+
+# Deploy
+git add dashboard/index.html
+git commit -m "Update dashboard"
+git push
+# Vercel auto-deploys in ~30 seconds
 ```
 
 ---
@@ -199,10 +250,9 @@ python scripts/compare_calculations.py
 # Step 4: Generate dashboard
 python scripts/generate_dashboard_from_excel.py
 
-# Step 5: Deploy
-git add dashboard/index.html
-git commit -m "Update dashboard"
-git push
+# Step 5: Deploy (choose one)
+# Internal hosting: Dashboard files auto-update, just refresh browser
+# Vercel (optional): git add dashboard/index.html && git commit -m "Update" && git push
 ```
 
 ---
@@ -275,7 +325,18 @@ Currently manual (double-click batch file).
 - Verify source Excel file structure matches expected format
 - Review validation output for specific mismatches
 
-**"Git push failed"**
+**"Dashboard not updating"**
+- Refresh browser (Ctrl+F5 for hard refresh)
+- Check that web server is pointing to correct `dashboard/` folder
+- Verify `update-dashboard.bat` completed successfully
+
+**"Admin settings disappeared"**
+- Settings are stored per browser, per URL origin
+- Different browsers = different settings (this is normal)
+- Each user can customize their own view
+- To transfer settings: Use browser console to copy `localStorage.getItem('formattingRules')` and paste on new browser with `localStorage.setItem('formattingRules', 'PASTE_HERE')`
+
+**"Git push failed" (if using Vercel)**
 - Authenticate with GitHub
 - Run `git push` manually to set up credentials
 
