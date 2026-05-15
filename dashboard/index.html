@@ -972,6 +972,13 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: (event, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const index = activeElements[0].index;
+                            const metricKey = metrics[index];
+                            highlightTableRow(metricKey);
+                        }
+                    },
                     plugins: {
                         legend: {
                             display: true,
@@ -1120,6 +1127,13 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: (event, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const index = activeElements[0].index;
+                            const metricKey = metrics[index];
+                            highlightTableRow(metricKey);
+                        }
+                    },
                     plugins: {
                         legend: {
                             display: false
