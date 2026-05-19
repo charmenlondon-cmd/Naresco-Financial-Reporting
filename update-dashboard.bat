@@ -1,99 +1,103 @@
 @echo off
 echo ============================================================
-echo NARESCO DASHBOARD UPDATE SCRIPT
+echo NARESCO DASHBOARD UPDATE SCRIPT (Multi-Company)
 echo ============================================================
 echo.
 
-REM Change to script directory
 cd /d "%~dp0"
 
-echo [1/8] Finding newest Excel file in source-files folder...
-echo.
+REM Process all Excel files in source-files folder
+set PROCESSED=0
+set FAILED=0
 
-REM Use PowerShell to find the newest .xlsx file
-for /f "delims=" %%i in ('powershell -Command "Get-ChildItem -Path 'source-files\*.xlsx' | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty Name"') do set NEWEST_FILE=%%i
+for /f "delims=" %%f in ('dir /b /a-d "source-files\*.xlsx" 2^>nul') do (
+    call :PROCESS_FILE "%%f"
+)
 
-if "%NEWEST_FILE%"=="" (
+if %PROCESSED%==0 (
     echo ERROR: No Excel files found in source-files folder!
-    echo Please add your Budget vs Actual Excel file to the source-files folder.
+    echo Please add Budget vs Actual Excel files to the source-files folder.
     pause
     exit /b 1
 )
 
-echo Found: %NEWEST_FILE%
 echo.
-
-echo [2/8] PATH A: Extracting to Excel Database...
-python scripts\extract_to_excel_database.py --input "source-files\%NEWEST_FILE%"
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Excel database extraction failed!
-    pause
-    exit /b 1
-)
-echo.
-
-echo [3/8] PATH B: Extracting to JSON...
-python scripts\extract_budget_data.py --input "source-files\%NEWEST_FILE%"
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: JSON extraction failed!
-    pause
-    exit /b 1
-)
-echo.
-
-echo [4/8] PATH B: Consolidating JSON data to YTD totals...
-python scripts\consolidate_data.py
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: JSON consolidation failed!
-    pause
-    exit /b 1
-)
-echo.
-
-echo [5/8] VALIDATION: Comparing Excel vs JSON calculations...
-python scripts\compare_calculations.py
-if %ERRORLEVEL% neq 0 (
-    echo.
-    echo ============================================================
-    echo VALIDATION FAILED!
-    echo Excel and JSON calculations do not match.
-    echo Please investigate before deploying.
-    echo ============================================================
-    pause
-    exit /b 1
-)
-echo.
-
-echo [6/8] Generating dashboard from Excel (validated source)...
-python scripts\generate_dashboard_from_excel.py
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Dashboard generation failed!
-    pause
-    exit /b 1
-)
-echo.
-
-echo [7/8] Deploying to web (git commit and push)...
-git add dashboard\index.html
-git commit -m "Update dashboard with latest data from %NEWEST_FILE%"
-git push
-if %ERRORLEVEL% neq 0 (
-    echo WARNING: Git push failed. Check your git credentials.
-    pause
-    exit /b 1
-)
-echo.
-
 echo ============================================================
-echo SUCCESS! Dashboard updated and deployed!
+if %FAILED%==0 (
+    echo SUCCESS! Processed %PROCESSED% company file(s^).
+) else (
+    echo COMPLETED with errors: %PROCESSED% processed, %FAILED% failed.
+)
 echo ============================================================
-echo.
-echo Data Source: Excel Database (validated against JSON)
-echo All calculations verified and matched!
-echo.
-echo Your dashboard will be live at:
-echo https://naresco-financial-reporting.vercel.app
-echo.
-echo (Vercel deployment takes ~30 seconds)
 echo.
 pause
+exit /b 0
+
+:PROCESS_FILE
+set FILENAME=%~1
+echo.
+echo ------------------------------------------------------------
+echo Processing: %FILENAME%
+echo ------------------------------------------------------------
+
+REM Detect company from filename
+set COMPANY=
+echo %FILENAME% | findstr /i "mudin mae" >nul && set COMPANY=mudin
+if "%COMPANY%"=="" echo %FILENAME% | findstr /i "mantis" >nul && set COMPANY=mantis
+
+if "%COMPANY%"=="" (
+    echo WARNING: Could not detect company from filename "%FILENAME%". Skipping.
+    set /a FAILED+=1
+    exit /b 0
+)
+
+echo Detected company: %COMPANY%
+
+REM Detect file type from filename
+set FILETYPE=
+echo %FILENAME% | findstr /i "Financial Statement" >nul && set FILETYPE=fs
+if "%FILETYPE%"=="" set FILETYPE=bva
+
+echo Detected file type: %FILETYPE%
+echo.
+
+if "%FILETYPE%"=="fs" goto :FS_PIPELINE
+
+REM -----------------------------------------------
+REM BVA PIPELINE (Budget vs Actual file)
+REM -----------------------------------------------
+echo [1/5] Extracting to Excel Database...
+python scripts\extract_to_excel_database.py --input "source-files\%FILENAME%" --company %COMPANY%
+if %ERRORLEVEL% neq 0 ( echo ERROR: Extraction to database failed! && set /a FAILED+=1 && exit /b 1 )
+
+echo [2/5] Extracting to JSON...
+python scripts\extract_budget_data.py --input "source-files\%FILENAME%" --company %COMPANY%
+if %ERRORLEVEL% neq 0 ( echo ERROR: JSON extraction failed! && set /a FAILED+=1 && exit /b 1 )
+
+echo [3/5] Consolidating JSON data to YTD totals...
+python scripts\consolidate_data.py --company %COMPANY%
+if %ERRORLEVEL% neq 0 ( echo ERROR: Consolidation failed! && set /a FAILED+=1 && exit /b 1 )
+
+echo [4/5] Validating Excel vs JSON calculations...
+python scripts\compare_calculations.py --company %COMPANY%
+if %ERRORLEVEL% neq 0 ( echo VALIDATION FAILED for %COMPANY%! && set /a FAILED+=1 && exit /b 1 )
+
+echo [5/5] Generating dashboard data...
+python scripts\generate_dashboard_from_excel.py --company %COMPANY%
+if %ERRORLEVEL% neq 0 ( echo ERROR: Dashboard data generation failed! && set /a FAILED+=1 && exit /b 1 )
+
+set /a PROCESSED+=1
+echo [OK] %COMPANY% BVA pipeline completed successfully.
+exit /b 0
+
+REM -----------------------------------------------
+:FS_PIPELINE
+REM FINANCIAL STATEMENT PIPELINE (revenue line items)
+REM -----------------------------------------------
+echo [1/1] Extracting revenue data to database...
+python scripts\extract_revenue_data.py --input "source-files\%FILENAME%" --company %COMPANY%
+if %ERRORLEVEL% neq 0 ( echo ERROR: Revenue extraction failed! && set /a FAILED+=1 && exit /b 1 )
+
+set /a PROCESSED+=1
+echo [OK] %COMPANY% revenue extraction completed successfully.
+exit /b 0

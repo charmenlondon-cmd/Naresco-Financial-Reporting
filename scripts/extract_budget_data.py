@@ -21,7 +21,10 @@ METRIC_NAMES = [
     "Total Staff Cost (Direct)",
     "Gross Profit / (Loss)",
     "Total Fixed Cost (Indirect)",
-    "Net Surplus / (Deflect)"
+    "Net Surplus / (Deflect)",
+    "Interest Expenses",
+    "Amortization",
+    "Depreciation",
 ]
 
 # Abbreviated names for percentage metrics (stored in database)
@@ -48,7 +51,10 @@ DASHBOARD_NAMES = {
     "Total Fixed Cost (Indirect)": "Fixed Costs (Indirect)",
     "TFCI %": "Fixed Costs (Indirect) %",
     "Net Surplus / (Deflect)": "Net Profit / Loss",
-    "NSD %": "Net Profit / Loss %"
+    "NSD %": "Net Profit / Loss %",
+    "Interest Expenses": "Interest Expenses",
+    "Amortization": "Amortization",
+    "Depreciation": "Depreciation",
 }
 
 MONTH_NAMES = [
@@ -57,40 +63,69 @@ MONTH_NAMES = [
 ]
 
 
+def detect_column_structure(ws):
+    """
+    Dynamically detect Budget/Actual/Variance column positions for each month.
+    Scans rows 1-25 to find the Budget header row, then maps column groups.
+    Returns list of (month_num, budget_col, actual_col, variance_col).
+    """
+    header_row = None
+    for row in range(1, 26):
+        for col in range(2, min(ws.max_column + 1, 15)):
+            v = ws.cell(row, col).value
+            if v and str(v).strip().lower() == "budget":
+                header_row = row
+                break
+        if header_row:
+            break
+
+    if not header_row:
+        raise ValueError("No 'Budget' header row found in first 25 rows. Check file structure.")
+
+    months = []
+    month_num = 0
+
+    for col in range(2, ws.max_column + 1):
+        v = ws.cell(header_row, col).value
+        if not v or str(v).strip().lower() != "budget":
+            continue
+
+        budget_col = col
+        actual_col = None
+        variance_col = None
+
+        for ahead in range(col + 1, min(col + 7, ws.max_column + 2)):
+            av = ws.cell(header_row, ahead).value
+            if av is None:
+                continue
+            av_str = str(av).strip().lower()
+            if "actual" in av_str and actual_col is None:
+                actual_col = ahead
+            elif "variance" in av_str and actual_col is not None:
+                variance_col = ahead
+                break
+            elif av_str == "budget":
+                break
+
+        if actual_col and variance_col:
+            month_num += 1
+            months.append((month_num, budget_col, actual_col, variance_col))
+
+    if not months:
+        raise ValueError("No complete Budget/Actual/Variance column groups found.")
+
+    return months
+
+
 def detect_month_from_columns(ws, budget_header_row=11):
-    """
-    Detect which month we're processing by finding "Budget" headers in row 11.
-
-    Each month has Budget/Actual/Variance columns with "Budget" in the header row.
-
-    Args:
-        ws: openpyxl worksheet
-        budget_header_row: Row containing "Budget" headers (default 11)
-
-    Returns:
-        tuple: (month_number, month_name)
-    """
-    # Find all columns with "Budget" header
-    month_count = 0
-    max_col = ws.max_column
-
-    for col in range(2, max_col + 1):  # Start from column 2 (after labels)
-        cell_value = ws.cell(budget_header_row, col).value
-        if cell_value:
-            cell_str = str(cell_value).strip().lower()
-            # Match both "Budget" and "Total Budget"
-            if cell_str == "budget" or "budget" in cell_str:
-                month_count += 1
-
+    """Detect number of months in the file using dynamic column detection."""
+    col_structure = detect_column_structure(ws)
+    month_count = len(col_structure)
     if month_count < 1:
         raise ValueError("No 'Budget' headers found in file. Check file structure.")
-
-    month_number = month_count
-    month_name = MONTH_NAMES[month_number - 1]
-
+    month_name = MONTH_NAMES[month_count - 1]
     print(f"Found {month_count} month(s) of data")
-
-    return month_number, month_name
+    return month_count, month_name
 
 
 def find_metric_row(ws, metric_name, search_col=1, max_row=150):
@@ -108,12 +143,14 @@ def find_metric_row(ws, metric_name, search_col=1, max_row=150):
     """
     for row in range(1, max_row + 1):
         cell_value = ws.cell(row, search_col).value
-        if cell_value and str(cell_value).strip() == metric_name:
-            return row
+        if cell_value:
+            cell_str = str(cell_value).strip()
+            if cell_str == metric_name or cell_str.startswith(metric_name):
+                return row
     return None
 
 
-def extract_metric_data(ws, metric_name, row_num, month_number):
+def extract_metric_data(ws, metric_name, row_num, month_number, col_structure=None):
     """
     Extract Budget, Actual, Variance for a specific metric and month.
 
@@ -128,14 +165,21 @@ def extract_metric_data(ws, metric_name, row_num, month_number):
         metric_name: Name of the metric
         row_num: Row number where metric is located
         month_number: Which month to extract (1-12)
+        col_structure: Optional list from detect_column_structure()
 
     Returns:
         dict: {budget, actual, variance}
     """
     # Calculate column positions for this month
-    budget_col = (month_number * 3) - 1
-    actual_col = month_number * 3
-    variance_col = (month_number * 3) + 1
+    if col_structure:
+        month_entry = next((m for m in col_structure if m[0] == month_number), None)
+        if not month_entry:
+            return {"budget": 0.0, "actual": 0.0, "variance": 0.0}
+        _, budget_col, actual_col, variance_col = month_entry
+    else:
+        budget_col = (month_number * 3) - 1
+        actual_col = month_number * 3
+        variance_col = (month_number * 3) + 1
 
     budget = ws.cell(row_num, budget_col).value
     actual = ws.cell(row_num, actual_col).value
@@ -184,7 +228,9 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
     ws = wb[sheet_name]
 
     # Detect total number of months in file
-    total_months, last_month_name = detect_month_from_columns(ws)
+    col_structure = detect_column_structure(ws)
+    total_months = len(col_structure)
+    last_month_name = MONTH_NAMES[total_months - 1]
     print(f"Detected {total_months} month(s) of data (last month: {last_month_name})")
 
     # Determine which months to extract
@@ -216,7 +262,7 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
             print(f"    [OK] Found at row {row_num}")
 
             # Extract the metric data for this specific month
-            data = extract_metric_data(ws, metric_name, row_num, month_number)
+            data = extract_metric_data(ws, metric_name, row_num, month_number, col_structure)
 
             # Add to results
             extracted_data.append({
@@ -238,7 +284,7 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
                     print(f"    [OK] Found percentage at row {percentage_row}")
 
                     # Extract percentage data
-                    pct_data = extract_metric_data(ws, f"{metric_name} %", percentage_row, month_number)
+                    pct_data = extract_metric_data(ws, f"{metric_name} %", percentage_row, month_number, col_structure)
                     pct_abbrev = PERCENTAGE_ABBREVIATIONS[metric_name]
 
                     extracted_data.append({
@@ -285,9 +331,14 @@ def main():
         help="Path to input Excel file"
     )
     parser.add_argument(
+        '--company',
+        required=True,
+        help='Company ID (e.g. mudin, mantis)'
+    )
+    parser.add_argument(
         "--output",
-        default="dashboard/data/raw-data.json",
-        help="Path to output JSON file (default: dashboard/data/raw-data.json)"
+        default=None,
+        help="Path to output JSON file"
     )
     parser.add_argument(
         "--sheet",
@@ -307,6 +358,9 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.output is None:
+        args.output = f"dashboard/data/raw-data-{args.company}.json"
 
     print("="*60)
     print("BUDGET VS ACTUAL DATA EXTRACTION")

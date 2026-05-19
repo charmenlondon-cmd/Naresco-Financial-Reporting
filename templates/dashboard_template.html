@@ -280,17 +280,59 @@
             margin-top: 30px;
             padding: 20px;
         }
+
+        /* Company Selector */
+        #companySelector {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #1e40af 0%, #0f172a 100%);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+        }
+        .company-selector-card {
+            background: white; border-radius: 16px; padding: 50px;
+            text-align: center; max-width: 480px; width: 90%;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+        }
+        .company-btn {
+            display: block; width: 100%; padding: 16px 24px; margin: 10px 0;
+            background: white; border: 2px solid #e2e8f0; border-radius: 10px;
+            font-size: 17px; font-weight: 600; color: #2d3748; cursor: pointer;
+            font-family: 'Poppins', sans-serif; transition: all 0.2s ease;
+        }
+        .company-btn:hover {
+            background: #1e40af; color: white; border-color: #1e40af;
+            transform: translateY(-2px); box-shadow: 0 8px 20px rgba(30,64,175,0.3);
+        }
+        .company-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .change-company-btn {
+            background: #e2e8f0; color: #4a5568; border: none;
+            padding: 6px 14px; border-radius: 5px; cursor: pointer;
+            float: right; font-size: 12px; font-weight: 500; margin-top: 18px;
+            margin-right: 6px; font-family: 'Poppins', sans-serif;
+        }
+        .change-company-btn:hover { background: #cbd5e0; }
     </style>
 </head>
 <body>
+    <!-- Company Selector Overlay -->
+    <div id="companySelector">
+        <div class="company-selector-card">
+            <img src="naresco-logo.png" alt="Naresco Logo" style="height:70px; margin-bottom:24px;">
+            <h1 style="color:#1e3a8a; font-size:24px; font-weight:700; margin-bottom:8px;">Financial Dashboard</h1>
+            <p style="color:#718096; margin-bottom:32px; font-size:15px;">Select a company to continue</p>
+            <div id="companyBtns"><div style="color:#718096; padding:20px;">Loading...</div></div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="header">
             <img src="naresco-logo.png" alt="Naresco Logo" class="header-logo">
             <div class="header-content">
                 <button class="admin-toggle" onclick="toggleAdmin()">Settings</button>
+                <button class="change-company-btn" onclick="changeCompany()">&#8592; Companies</button>
                 <h1>Budget vs Actual Dashboard</h1>
                 <div class="meta">
+                    <span id="companyNameLabel" style="font-weight:600; color:#1e40af;"></span> |
                     <span id="period-label"></span> |
                     Generated: <span id="generated-time"></span>
                 </div>
@@ -362,16 +404,73 @@
     </div>
 
     <script>
-        // Dashboard data injected by Python script
-        const dashboardData = {{DASHBOARD_DATA}};
+        let dashboardData = null;
 
         // Formatting rules storage
         let formattingRules = JSON.parse(localStorage.getItem('formattingRules') || '{}');
 
-        // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
-            initializeDashboard();
+            const storedCompany = sessionStorage.getItem('selectedCompany');
+            const storedCompanyName = sessionStorage.getItem('selectedCompanyName');
+            if (storedCompany) {
+                selectCompany(storedCompany, storedCompanyName);
+            } else {
+                loadCompanySelector();
+            }
         });
+
+        async function loadCompanySelector() {
+            document.getElementById('companySelector').style.display = 'flex';
+            const container = document.getElementById('companyBtns');
+            container.innerHTML = '<div style="color:#718096; padding:20px;">Loading...</div>';
+            try {
+                const res = await fetch('data/companies.json');
+                const companies = await res.json();
+                container.innerHTML = '';
+                companies.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.className = 'company-btn';
+                    btn.textContent = c.name;
+                    btn.onclick = () => selectCompany(c.id, c.name);
+                    container.appendChild(btn);
+                });
+            } catch(e) {
+                container.innerHTML = '<p style="color:red; font-size:14px;">Error loading company list.<br>Please ensure data/companies.json exists.</p>';
+            }
+        }
+
+        async function selectCompany(companyId, companyName) {
+            const btns = document.querySelectorAll('.company-btn');
+            btns.forEach(b => { b.disabled = true; b.textContent = 'Loading...'; });
+            try {
+                const res = await fetch(`data/dashboard-${companyId}.json`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                dashboardData = await res.json();
+                sessionStorage.setItem('selectedCompany', companyId);
+                sessionStorage.setItem('selectedCompanyName', companyName);
+                document.getElementById('companySelector').style.display = 'none';
+                const label = document.getElementById('companyNameLabel');
+                if (label) label.textContent = companyName;
+                initializeDashboard();
+            } catch(e) {
+                sessionStorage.removeItem('selectedCompany');
+                sessionStorage.removeItem('selectedCompanyName');
+                loadCompanySelector();
+                alert(`Could not load data for ${companyName}.\nPlease run the update script first.`);
+            }
+        }
+
+        function changeCompany() {
+            sessionStorage.removeItem('selectedCompany');
+            sessionStorage.removeItem('selectedCompanyName');
+            document.getElementById('kpiGrid').innerHTML = '';
+            document.getElementById('tableBody').innerHTML = '';
+            document.getElementById('formatRules').innerHTML = '';
+            const chartIds = ['budgetActualChart', 'varianceChart'];
+            chartIds.forEach(id => { const c = Chart.getChart(id); if (c) c.destroy(); });
+            dashboardData = null;
+            loadCompanySelector();
+        }
 
         function initializeDashboard() {
             // Set metadata
@@ -404,7 +503,8 @@
                 { key: 'Total Revenue', label: 'Total Revenue', format: 'currency' },
                 { key: 'Contribution Margin', label: 'Contribution Margin', format: 'currency' },
                 { key: 'Gross Profit / (Loss)', label: getDynamicLabel('Gross Profit / (Loss)', ytd), format: 'currency' },
-                { key: 'Net Surplus / (Deflect)', label: getDynamicLabel('Net Surplus / (Deflect)', ytd), format: 'currency' }
+                { key: 'Net Surplus / (Deflect)', label: getDynamicLabel('Net Surplus / (Deflect)', ytd), format: 'currency' },
+                { key: 'EBITDA', label: 'EBITDA', format: 'currency' }
             ];
 
             kpis.forEach(kpi => {

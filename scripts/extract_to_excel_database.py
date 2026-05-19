@@ -62,7 +62,22 @@ METRICS_CONFIG = {
         "has_percentage": True,
         "percentage_abbrev": "NSD %",
         "percentage_dashboard": "Net Profit / Loss %"
-    }
+    },
+    "Interest Expenses": {
+        "dashboard_name": "Interest Expenses",
+        "row_name": "Interest Expenses",
+        "has_percentage": False
+    },
+    "Amortization": {
+        "dashboard_name": "Amortization",
+        "row_name": "Amortization",
+        "has_percentage": False
+    },
+    "Depreciation": {
+        "dashboard_name": "Depreciation",
+        "row_name": "Depreciation",
+        "has_percentage": False
+    },
 }
 
 MONTH_NAMES = [
@@ -71,51 +86,80 @@ MONTH_NAMES = [
 ]
 
 
-def detect_months_in_file(ws, budget_header_row=11):
+def detect_column_structure(ws):
     """
-    Detect how many months of data are in the file.
-    Counts 'Budget' headers in row 11.
+    Dynamically detect Budget/Actual/Variance column positions for each month.
+    Scans rows 1-25 to find the Budget header row, then maps column groups.
+    Returns list of (month_num, budget_col, actual_col, variance_col).
     """
-    month_count = 0
+    header_row = None
+    for row in range(1, 26):
+        for col in range(2, min(ws.max_column + 1, 15)):
+            v = ws.cell(row, col).value
+            if v and str(v).strip().lower() == "budget":
+                header_row = row
+                break
+        if header_row:
+            break
+
+    if not header_row:
+        raise ValueError("No 'Budget' header row found in first 25 rows. Check file structure.")
+
+    months = []
+    month_num = 0
+
     for col in range(2, ws.max_column + 1):
-        cell_value = ws.cell(budget_header_row, col).value
-        if cell_value and str(cell_value).strip().lower() == "budget":
-            month_count += 1
-    return month_count
+        v = ws.cell(header_row, col).value
+        if not v or str(v).strip().lower() != "budget":
+            continue
+
+        budget_col = col
+        actual_col = None
+        variance_col = None
+
+        for ahead in range(col + 1, min(col + 7, ws.max_column + 2)):
+            av = ws.cell(header_row, ahead).value
+            if av is None:
+                continue
+            av_str = str(av).strip().lower()
+            if "actual" in av_str and actual_col is None:
+                actual_col = ahead
+            elif "variance" in av_str and actual_col is not None:
+                variance_col = ahead
+                break
+            elif av_str == "budget":
+                break
+
+        if actual_col and variance_col:
+            month_num += 1
+            months.append((month_num, budget_col, actual_col, variance_col))
+
+    if not months:
+        raise ValueError("No complete Budget/Actual/Variance column groups found.")
+
+    return months
+
+
+def detect_months_in_file(ws, budget_header_row=11):
+    """Detect how many months of data are in the file using dynamic detection."""
+    col_structure = detect_column_structure(ws)
+    return len(col_structure)
 
 
 def find_metric_row(ws, metric_name, search_col=1, max_row=150):
     """Find row number for a metric name."""
     for row in range(1, max_row + 1):
         cell_value = ws.cell(row, search_col).value
-        if cell_value and str(cell_value).strip() == metric_name:
-            return row
+        if cell_value:
+            cell_str = str(cell_value).strip()
+            if cell_str == metric_name or cell_str.startswith(metric_name):
+                return row
     return None
 
 
-def extract_metric_value(ws, row_num, month_num, value_type='budget'):
-    """
-    Extract Budget, Actual, or Variance for a metric and month.
-    month_num: 1=Jan, 2=Feb, etc.
-    value_type: 'budget', 'actual', or 'variance'
-    """
-    # Column calculation: each month has 3 columns (Budget, Actual, Variance)
-    # Month 1: cols 2, 3, 4
-    # Month 2: cols 5, 6, 7
-    # Month N: cols (N*3-1), (N*3), (N*3+1)
-
-    if value_type == 'budget':
-        col = (month_num * 3) - 1
-    elif value_type == 'actual':
-        col = month_num * 3
-    elif value_type == 'variance':
-        col = (month_num * 3) + 1
-    else:
-        raise ValueError(f"Invalid value_type: {value_type}")
-
+def extract_metric_value(ws, row_num, col):
+    """Extract a single value from the worksheet at (row_num, col)."""
     value = ws.cell(row_num, col).value
-
-    # Handle errors and None
     if value is None:
         return 0.0
     if isinstance(value, str) and '#' in value:
@@ -139,8 +183,9 @@ def extract_from_source(file_path, sheet_name="Detail Budget"):
 
     ws = wb[sheet_name]
 
-    # Detect months
-    total_months = detect_months_in_file(ws)
+    # Detect months and column positions
+    col_structure = detect_column_structure(ws)
+    total_months = len(col_structure)
     print(f"Detected {total_months} month(s) of data")
 
     # Extract data for all months
@@ -158,9 +203,13 @@ def extract_from_source(file_path, sheet_name="Detail Budget"):
                 continue
 
             # Extract Budget, Actual, Variance
-            budget = extract_metric_value(ws, row_num, month_num, 'budget')
-            actual = extract_metric_value(ws, row_num, month_num, 'actual')
-            variance = extract_metric_value(ws, row_num, month_num, 'variance')
+            month_entry = next((m for m in col_structure if m[0] == month_num), None)
+            if not month_entry:
+                continue
+            _, budget_col, actual_col, variance_col = month_entry
+            budget = extract_metric_value(ws, row_num, budget_col)
+            actual = extract_metric_value(ws, row_num, actual_col)
+            variance = extract_metric_value(ws, row_num, variance_col)
 
             # Add main metric
             records.append({
@@ -176,9 +225,9 @@ def extract_from_source(file_path, sheet_name="Detail Budget"):
             # Add percentage if applicable
             if config.get('has_percentage'):
                 pct_row = row_num + 1
-                pct_budget = extract_metric_value(ws, pct_row, month_num, 'budget')
-                pct_actual = extract_metric_value(ws, pct_row, month_num, 'actual')
-                pct_variance = extract_metric_value(ws, pct_row, month_num, 'variance')
+                pct_budget = extract_metric_value(ws, pct_row, budget_col)
+                pct_actual = extract_metric_value(ws, pct_row, actual_col)
+                pct_variance = extract_metric_value(ws, pct_row, variance_col)
 
                 records.append({
                     'Month': month_name,
@@ -280,6 +329,32 @@ def create_calculations_sheet(database_path):
             ws.cell(row, 5, f'=AVERAGEIF(\'BVA_DATA\'!B:B,A{row},\'BVA_DATA\'!G:G)')
             row += 1
 
+    # EBITDA (derived: Net Surplus + Interest + Amortization + Depreciation)
+    ebitda_components = [
+        "Net Surplus / (Deflect)",
+        "Interest Expenses",
+        "Amortization",
+        "Depreciation"
+    ]
+    sumif_budget = "+".join([f"SUMIF('BVA_DATA'!B:B,\"{m}\",'BVA_DATA'!E:E)" for m in ebitda_components])
+    sumif_actual = "+".join([f"SUMIF('BVA_DATA'!B:B,\"{m}\",'BVA_DATA'!F:F)" for m in ebitda_components])
+
+    ws.cell(row, 1, "EBITDA")
+    ws.cell(row, 2, "EBITDA")
+    ws.cell(row, 3, f"={sumif_budget}")
+    ws.cell(row, 4, f"={sumif_actual}")
+    ws.cell(row, 5, f"=D{row}-C{row}")
+    ebitda_row = row
+    row += 1
+
+    # EBITDA %
+    ws.cell(row, 1, "EBITDA %")
+    ws.cell(row, 2, "EBITDA %")
+    ws.cell(row, 3, f"=IF(SUMIF('BVA_DATA'!B:B,\"Total Revenue\",'BVA_DATA'!E:E)=0,0,C{ebitda_row}/SUMIF('BVA_DATA'!B:B,\"Total Revenue\",'BVA_DATA'!E:E))")
+    ws.cell(row, 4, f"=IF(SUMIF('BVA_DATA'!B:B,\"Total Revenue\",'BVA_DATA'!F:F)=0,0,D{ebitda_row}/SUMIF('BVA_DATA'!B:B,\"Total Revenue\",'BVA_DATA'!F:F))")
+    ws.cell(row, 5, f"=D{row}-C{row}")
+    row += 1
+
     wb.save(database_path)
     wb.close()
 
@@ -296,9 +371,14 @@ def main():
         help="Path to source Excel file"
     )
     parser.add_argument(
+        '--company',
+        required=True,
+        help='Company ID (e.g. mudin, mantis)'
+    )
+    parser.add_argument(
         "--database",
-        default="Financial-Data-Database.xlsx",
-        help="Path to Excel database (default: Financial-Data-Database.xlsx)"
+        default=None,
+        help="Path to Excel database"
     )
     parser.add_argument(
         "--sheet",
@@ -307,6 +387,9 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.database is None:
+        args.database = f"Financial-Data-Database-{args.company.capitalize()}.xlsx"
 
     print("="*60)
     print("EXTRACT TO EXCEL DATABASE")

@@ -32,6 +32,7 @@ env/
 data/raw-data.json
 data/calculations.json
 dashboard/data/*.json
+!dashboard/data/companies.json
 *_values.xlsx
 source-files/*.xlsx
 source-files/*.xls

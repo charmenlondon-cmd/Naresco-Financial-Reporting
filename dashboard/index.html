@@ -280,17 +280,59 @@
             margin-top: 30px;
             padding: 20px;
         }
+
+        /* Company Selector */
+        #companySelector {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #1e40af 0%, #0f172a 100%);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+        }
+        .company-selector-card {
+            background: white; border-radius: 16px; padding: 50px;
+            text-align: center; max-width: 480px; width: 90%;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+        }
+        .company-btn {
+            display: block; width: 100%; padding: 16px 24px; margin: 10px 0;
+            background: white; border: 2px solid #e2e8f0; border-radius: 10px;
+            font-size: 17px; font-weight: 600; color: #2d3748; cursor: pointer;
+            font-family: 'Poppins', sans-serif; transition: all 0.2s ease;
+        }
+        .company-btn:hover {
+            background: #1e40af; color: white; border-color: #1e40af;
+            transform: translateY(-2px); box-shadow: 0 8px 20px rgba(30,64,175,0.3);
+        }
+        .company-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .change-company-btn {
+            background: #e2e8f0; color: #4a5568; border: none;
+            padding: 6px 14px; border-radius: 5px; cursor: pointer;
+            float: right; font-size: 12px; font-weight: 500; margin-top: 18px;
+            margin-right: 6px; font-family: 'Poppins', sans-serif;
+        }
+        .change-company-btn:hover { background: #cbd5e0; }
     </style>
 </head>
 <body>
+    <!-- Company Selector Overlay -->
+    <div id="companySelector">
+        <div class="company-selector-card">
+            <img src="naresco-logo.png" alt="Naresco Logo" style="height:70px; margin-bottom:24px;">
+            <h1 style="color:#1e3a8a; font-size:24px; font-weight:700; margin-bottom:8px;">Financial Dashboard</h1>
+            <p style="color:#718096; margin-bottom:32px; font-size:15px;">Select a company to continue</p>
+            <div id="companyBtns"><div style="color:#718096; padding:20px;">Loading...</div></div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="header">
             <img src="naresco-logo.png" alt="Naresco Logo" class="header-logo">
             <div class="header-content">
                 <button class="admin-toggle" onclick="toggleAdmin()">Settings</button>
+                <button class="change-company-btn" onclick="changeCompany()">&#8592; Companies</button>
                 <h1>Budget vs Actual Dashboard</h1>
                 <div class="meta">
+                    <span id="companyNameLabel" style="font-weight:600; color:#1e40af;"></span> |
                     <span id="period-label"></span> |
                     Generated: <span id="generated-time"></span>
                 </div>
@@ -362,345 +404,73 @@
     </div>
 
     <script>
-        // Dashboard data injected by Python script
-        const dashboardData = {
-  "months": [
-    "January",
-    "February",
-    "March"
-  ],
-  "monthly_data": {
-    "January": {
-      "Total Revenue": {
-        "budget": 9000000.0,
-        "actual": 4000000.0,
-        "variance": -5000000.0,
-        "dashboard_name": "Total Revnue"
-      },
-      "Total Variable Cost": {
-        "budget": 7000000.0,
-        "actual": 3000000.0,
-        "variance": 4000000.0,
-        "dashboard_name": "Variable Cost"
-      },
-      "TVC %": {
-        "budget": 0.7777777777777778,
-        "actual": 0.75,
-        "variance": 0.02777777777777779,
-        "dashboard_name": "Variable Cost %"
-      },
-      "Contribution Margin": {
-        "budget": 2000000.0,
-        "actual": 1000000.0,
-        "variance": -1000000.0,
-        "dashboard_name": "Contribution Margin"
-      },
-      "CM %": {
-        "budget": 0.2222222222222222,
-        "actual": 0.25,
-        "variance": 0.02777777777777779,
-        "dashboard_name": "Contribution Margin %"
-      },
-      "Total Staff Cost (Direct)": {
-        "budget": 586200.0,
-        "actual": 537150.0,
-        "variance": 49050.0,
-        "dashboard_name": "Fixed Costs (Direct)"
-      },
-      "TSCD %": {
-        "budget": 0.06513333333333333,
-        "actual": 0.1342875,
-        "variance": -0.06915416666666667,
-        "dashboard_name": "Fixed Costs (Direct) %"
-      },
-      "Gross Profit / (Loss)": {
-        "budget": 1413800.0,
-        "actual": 462850.0,
-        "variance": -950950.0,
-        "dashboard_name": "Gross Profit / Loss"
-      },
-      "GP %": {
-        "budget": 0.1570888888888889,
-        "actual": 0.1157125,
-        "variance": -0.04137638888888889,
-        "dashboard_name": "Gross Profit / Loss %"
-      },
-      "Total Fixed Cost (Indirect)": {
-        "budget": 253121.0,
-        "actual": 179021.0,
-        "variance": 74100.0,
-        "dashboard_name": "Fixed Costs (Indirect)"
-      },
-      "TFCI %": {
-        "budget": 0.02812455555555556,
-        "actual": 0.04475525,
-        "variance": -0.01663069444444445,
-        "dashboard_name": "Fixed Costs (Indirect) %"
-      },
-      "Net Surplus / (Deflect)": {
-        "budget": 1060830.915,
-        "actual": 332941.0,
-        "variance": -727889.915,
-        "dashboard_name": "Net Profit / Loss"
-      },
-      "NSD %": {
-        "budget": 0.1178701016666667,
-        "actual": 0.08323525,
-        "variance": -0.03463485166666667,
-        "dashboard_name": "Net Profit / Loss %"
-      }
-    },
-    "February": {
-      "Total Revenue": {
-        "budget": 8000000.0,
-        "actual": 6000000.0,
-        "variance": -2000000.0,
-        "dashboard_name": "Total Revnue"
-      },
-      "Total Variable Cost": {
-        "budget": 7000000.0,
-        "actual": 5000000.0,
-        "variance": 2000000.0,
-        "dashboard_name": "Variable Cost"
-      },
-      "TVC %": {
-        "budget": 0.875,
-        "actual": 0.8333333333333334,
-        "variance": 0.04166666666666663,
-        "dashboard_name": "Variable Cost %"
-      },
-      "Contribution Margin": {
-        "budget": 1000000.0,
-        "actual": 1000000.0,
-        "variance": 0.0,
-        "dashboard_name": "Contribution Margin"
-      },
-      "CM %": {
-        "budget": 0.125,
-        "actual": 0.1666666666666667,
-        "variance": 0.04166666666666666,
-        "dashboard_name": "Contribution Margin %"
-      },
-      "Total Staff Cost (Direct)": {
-        "budget": 614200.0,
-        "actual": 529403.0,
-        "variance": 84797.0,
-        "dashboard_name": "Fixed Costs (Direct)"
-      },
-      "TSCD %": {
-        "budget": 0.076775,
-        "actual": 0.08823383333333333,
-        "variance": -0.01145883333333333,
-        "dashboard_name": "Fixed Costs (Direct) %"
-      },
-      "Gross Profit / (Loss)": {
-        "budget": 385800.0,
-        "actual": 470597.0,
-        "variance": 84797.0,
-        "dashboard_name": "Gross Profit / Loss"
-      },
-      "GP %": {
-        "budget": 0.048225,
-        "actual": 0.07843283333333333,
-        "variance": 0.03020783333333333,
-        "dashboard_name": "Gross Profit / Loss %"
-      },
-      "Total Fixed Cost (Indirect)": {
-        "budget": 250621.0,
-        "actual": 163750.0,
-        "variance": 86871.0,
-        "dashboard_name": "Fixed Costs (Indirect)"
-      },
-      "TFCI %": {
-        "budget": 0.031327625,
-        "actual": 0.02729166666666667,
-        "variance": 0.004035958333333332,
-        "dashboard_name": "Fixed Costs (Indirect) %"
-      },
-      "Net Surplus / (Deflect)": {
-        "budget": 119633.415,
-        "actual": 306847.0,
-        "variance": 187213.585,
-        "dashboard_name": "Net Profit / Loss"
-      },
-      "NSD %": {
-        "budget": 0.014954176875,
-        "actual": 0.05114116666666667,
-        "variance": 0.03618698979166667,
-        "dashboard_name": "Net Profit / Loss %"
-      }
-    },
-    "March": {
-      "Total Revenue": {
-        "budget": 17000000.0,
-        "actual": 10000000.0,
-        "variance": -7000000.0,
-        "dashboard_name": "Total Revnue"
-      },
-      "Total Variable Cost": {
-        "budget": 14000000.0,
-        "actual": 8000000.0,
-        "variance": 6000000.0,
-        "dashboard_name": "Variable Cost"
-      },
-      "TVC %": {
-        "budget": 0.8235294117647058,
-        "actual": 0.8,
-        "variance": 0.0235294117647058,
-        "dashboard_name": "Variable Cost %"
-      },
-      "Contribution Margin": {
-        "budget": 3000000.0,
-        "actual": 2000000.0,
-        "variance": -1000000.0,
-        "dashboard_name": "Contribution Margin"
-      },
-      "CM %": {
-        "budget": 0.1764705882352941,
-        "actual": 0.2,
-        "variance": 0.02352941176470588,
-        "dashboard_name": "Contribution Margin %"
-      },
-      "Total Staff Cost (Direct)": {
-        "budget": 1200400.0,
-        "actual": 1066553.0,
-        "variance": 133847.0,
-        "dashboard_name": "Fixed Costs (Direct)"
-      },
-      "TSCD %": {
-        "budget": 0.07061176470588235,
-        "actual": 0.1066553,
-        "variance": -0.03604353529411765,
-        "dashboard_name": "Fixed Costs (Direct) %"
-      },
-      "Gross Profit / (Loss)": {
-        "budget": 1799600.0,
-        "actual": 933447.0,
-        "variance": -866153.0,
-        "dashboard_name": "Gross Profit / Loss"
-      },
-      "GP %": {
-        "budget": 0.1058588235294118,
-        "actual": 0.0933447,
-        "variance": -0.01251412352941177,
-        "dashboard_name": "Gross Profit / Loss %"
-      },
-      "Total Fixed Cost (Indirect)": {
-        "budget": 503742.0,
-        "actual": 342771.0,
-        "variance": 160971.0,
-        "dashboard_name": "Fixed Costs (Indirect)"
-      },
-      "TFCI %": {
-        "budget": 0.02963188235294118,
-        "actual": 0.0342771,
-        "variance": -0.00464521764705882,
-        "dashboard_name": "Fixed Costs (Indirect) %"
-      },
-      "Net Surplus / (Deflect)": {
-        "budget": 1180464.33,
-        "actual": 639788.0,
-        "variance": -540676.3300000001,
-        "dashboard_name": "Net Profit / Loss"
-      },
-      "NSD %": {
-        "budget": 0.06943907823529412,
-        "actual": 0.0639788,
-        "variance": -0.005460278235294116,
-        "dashboard_name": "Net Profit / Loss %"
-      }
-    }
-  },
-  "ytd_data": {
-    "Total Revenue": {
-      "budget": 34000000.0,
-      "actual": 20000000.0,
-      "variance": -14000000.0,
-      "dashboard_name": "Total Revnue"
-    },
-    "Total Variable Cost": {
-      "budget": 28000000.0,
-      "actual": 16000000.0,
-      "variance": -12000000.0,
-      "dashboard_name": "Variable Cost"
-    },
-    "TVC %": {
-      "budget": 0.8254357298474946,
-      "actual": 0.7944444444444444,
-      "variance": -0.030991285403050184,
-      "dashboard_name": "Variable Cost %"
-    },
-    "Contribution Margin": {
-      "budget": 6000000.0,
-      "actual": 4000000.0,
-      "variance": -2000000.0,
-      "dashboard_name": "Contribution Margin"
-    },
-    "CM %": {
-      "budget": 0.17456427015250542,
-      "actual": 0.20555555555555557,
-      "variance": 0.030991285403050156,
-      "dashboard_name": "Contribution Margin %"
-    },
-    "Total Staff Cost (Direct)": {
-      "budget": 2400800.0,
-      "actual": 2133106.0,
-      "variance": -267694.0,
-      "dashboard_name": "Fixed Costs (Direct)"
-    },
-    "TSCD %": {
-      "budget": 0.07084003267973855,
-      "actual": 0.10972554444444445,
-      "variance": 0.03888551176470589,
-      "dashboard_name": "Fixed Costs (Direct) %"
-    },
-    "Gross Profit / (Loss)": {
-      "budget": 3599200.0,
-      "actual": 1866894.0,
-      "variance": -1732306.0,
-      "dashboard_name": "Gross Profit / Loss"
-    },
-    "GP %": {
-      "budget": 0.10372423747276689,
-      "actual": 0.09583001111111111,
-      "variance": -0.007894226361655779,
-      "dashboard_name": "Gross Profit / Loss %"
-    },
-    "Total Fixed Cost (Indirect)": {
-      "budget": 1007484.0,
-      "actual": 685542.0,
-      "variance": -321942.0,
-      "dashboard_name": "Fixed Costs (Indirect)"
-    },
-    "TFCI %": {
-      "budget": 0.02969468763616558,
-      "actual": 0.03544133888888889,
-      "variance": 0.0057466512527233095,
-      "dashboard_name": "Fixed Costs (Indirect) %"
-    },
-    "Net Surplus / (Deflect)": {
-      "budget": 2360928.66,
-      "actual": 1279576.0,
-      "variance": -1081352.6600000001,
-      "dashboard_name": "Net Profit / Loss"
-    },
-    "NSD %": {
-      "budget": 0.0674211189256536,
-      "actual": 0.06611840555555555,
-      "variance": -0.0013027133700980464,
-      "dashboard_name": "Net Profit / Loss %"
-    }
-  },
-  "generated_at": "2026-04-30 08:44:01"
-};
+        let dashboardData = null;
 
         // Formatting rules storage
         let formattingRules = JSON.parse(localStorage.getItem('formattingRules') || '{}');
 
-        // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
-            initializeDashboard();
+            const storedCompany = sessionStorage.getItem('selectedCompany');
+            const storedCompanyName = sessionStorage.getItem('selectedCompanyName');
+            if (storedCompany) {
+                selectCompany(storedCompany, storedCompanyName);
+            } else {
+                loadCompanySelector();
+            }
         });
+
+        async function loadCompanySelector() {
+            document.getElementById('companySelector').style.display = 'flex';
+            const container = document.getElementById('companyBtns');
+            container.innerHTML = '<div style="color:#718096; padding:20px;">Loading...</div>';
+            try {
+                const res = await fetch('data/companies.json');
+                const companies = await res.json();
+                container.innerHTML = '';
+                companies.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.className = 'company-btn';
+                    btn.textContent = c.name;
+                    btn.onclick = () => selectCompany(c.id, c.name);
+                    container.appendChild(btn);
+                });
+            } catch(e) {
+                container.innerHTML = '<p style="color:red; font-size:14px;">Error loading company list.<br>Please ensure data/companies.json exists.</p>';
+            }
+        }
+
+        async function selectCompany(companyId, companyName) {
+            const btns = document.querySelectorAll('.company-btn');
+            btns.forEach(b => { b.disabled = true; b.textContent = 'Loading...'; });
+            try {
+                const res = await fetch(`data/dashboard-${companyId}.json`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                dashboardData = await res.json();
+                sessionStorage.setItem('selectedCompany', companyId);
+                sessionStorage.setItem('selectedCompanyName', companyName);
+                document.getElementById('companySelector').style.display = 'none';
+                const label = document.getElementById('companyNameLabel');
+                if (label) label.textContent = companyName;
+                initializeDashboard();
+            } catch(e) {
+                sessionStorage.removeItem('selectedCompany');
+                sessionStorage.removeItem('selectedCompanyName');
+                loadCompanySelector();
+                alert(`Could not load data for ${companyName}.\nPlease run the update script first.`);
+            }
+        }
+
+        function changeCompany() {
+            sessionStorage.removeItem('selectedCompany');
+            sessionStorage.removeItem('selectedCompanyName');
+            document.getElementById('kpiGrid').innerHTML = '';
+            document.getElementById('tableBody').innerHTML = '';
+            document.getElementById('formatRules').innerHTML = '';
+            const chartIds = ['budgetActualChart', 'varianceChart'];
+            chartIds.forEach(id => { const c = Chart.getChart(id); if (c) c.destroy(); });
+            dashboardData = null;
+            loadCompanySelector();
+        }
 
         function initializeDashboard() {
             // Set metadata
@@ -733,7 +503,8 @@
                 { key: 'Total Revenue', label: 'Total Revenue', format: 'currency' },
                 { key: 'Contribution Margin', label: 'Contribution Margin', format: 'currency' },
                 { key: 'Gross Profit / (Loss)', label: getDynamicLabel('Gross Profit / (Loss)', ytd), format: 'currency' },
-                { key: 'Net Surplus / (Deflect)', label: getDynamicLabel('Net Surplus / (Deflect)', ytd), format: 'currency' }
+                { key: 'Net Surplus / (Deflect)', label: getDynamicLabel('Net Surplus / (Deflect)', ytd), format: 'currency' },
+                { key: 'EBITDA', label: 'EBITDA', format: 'currency' }
             ];
 
             kpis.forEach(kpi => {
@@ -972,13 +743,6 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    onClick: (event, activeElements) => {
-                        if (activeElements.length > 0) {
-                            const index = activeElements[0].index;
-                            const metricKey = metrics[index];
-                            highlightTableRow(metricKey);
-                        }
-                    },
                     plugins: {
                         legend: {
                             display: true,
@@ -1127,13 +891,6 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    onClick: (event, activeElements) => {
-                        if (activeElements.length > 0) {
-                            const index = activeElements[0].index;
-                            const metricKey = metrics[index];
-                            highlightTableRow(metricKey);
-                        }
-                    },
                     plugins: {
                         legend: {
                             display: false

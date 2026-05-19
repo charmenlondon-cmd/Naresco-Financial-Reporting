@@ -18,7 +18,8 @@ PERCENTAGE_METRICS = [
     "TSCD %",
     "GP %",
     "TFCI %",
-    "NSD %"
+    "NSD %",
+    "EBITDA %"
 ]
 
 
@@ -124,17 +125,27 @@ def main():
         description="Consolidate Budget vs Actual raw data into YTD totals"
     )
     parser.add_argument(
+        '--company',
+        required=True,
+        help='Company ID (e.g. mudin, mantis)'
+    )
+    parser.add_argument(
         "--input",
-        default="dashboard/data/raw-data.json",
-        help="Path to raw data JSON file (default: dashboard/data/raw-data.json)"
+        default=None,
+        help="Path to raw data JSON file"
     )
     parser.add_argument(
         "--output",
-        default="dashboard/data/calculations.json",
-        help="Path to output consolidated JSON file (default: dashboard/data/calculations.json)"
+        default=None,
+        help="Path to output consolidated JSON file"
     )
 
     args = parser.parse_args()
+
+    if args.input is None:
+        args.input = f"dashboard/data/raw-data-{args.company}.json"
+    if args.output is None:
+        args.output = f"dashboard/data/calculations-{args.company}.json"
 
     print("="*60)
     print("BUDGET VS ACTUAL DATA CONSOLIDATION")
@@ -151,6 +162,40 @@ def main():
         # Consolidate metrics
         print("\nCalculating YTD totals:")
         consolidated = consolidate_metrics(raw_data)
+
+        # Derive EBITDA from components
+        def get_metric(data, name, field):
+            m = next((r for r in data if r['DataPoint'] == name), None)
+            return m[field] if m else 0.0
+
+        ebitda_components = ['Net Surplus / (Deflect)', 'Interest Expenses', 'Amortization', 'Depreciation']
+        revenue_budget = get_metric(consolidated, 'Total Revenue', 'YTD_BUDGET')
+        revenue_actual = get_metric(consolidated, 'Total Revenue', 'YTD_ACTUAL')
+
+        ebitda_budget = sum(get_metric(consolidated, c, 'YTD_BUDGET') for c in ebitda_components)
+        ebitda_actual = sum(get_metric(consolidated, c, 'YTD_ACTUAL') for c in ebitda_components)
+        ebitda_variance = ebitda_actual - ebitda_budget
+
+        ebitda_pct_budget = ebitda_budget / revenue_budget if revenue_budget else 0.0
+        ebitda_pct_actual = ebitda_actual / revenue_actual if revenue_actual else 0.0
+        ebitda_pct_variance = ebitda_pct_actual - ebitda_pct_budget
+
+        consolidated.append({
+            'DataPoint': 'EBITDA',
+            'DashboardName': 'EBITDA',
+            'YTD_BUDGET': ebitda_budget,
+            'YTD_ACTUAL': ebitda_actual,
+            'YTD_VARIANCE': ebitda_variance,
+            'AggregationMethod': 'DERIVED'
+        })
+        consolidated.append({
+            'DataPoint': 'EBITDA %',
+            'DashboardName': 'EBITDA %',
+            'YTD_BUDGET': ebitda_pct_budget,
+            'YTD_ACTUAL': ebitda_pct_actual,
+            'YTD_VARIANCE': ebitda_pct_variance,
+            'AggregationMethod': 'DERIVED'
+        })
 
         # Save consolidated data
         save_consolidated_data(consolidated, args.output)

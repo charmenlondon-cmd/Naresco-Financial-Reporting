@@ -12,86 +12,60 @@ from pathlib import Path
 from datetime import datetime
 
 
-def read_excel_database(excel_path="Financial-Data-Database.xlsx"):
+def read_excel_database(excel_path, calculations_json_path):
     """
-    Read data from Excel database (BVA_DATA and BVA_CALC sheets).
-
-    Returns:
-        dict: Dashboard data structure
+    Read monthly data from BVA_DATA sheet and YTD totals from calculations JSON.
+    BVA_DATA columns: Month | DataPoint | SampleRowNum | DashboardName | Budget | Actual | Variance
     """
     print(f"Reading data from {excel_path}...")
 
     wb = openpyxl.load_workbook(excel_path, data_only=True)
 
-    # Read raw monthly data from BVA_DATA
     if 'BVA_DATA' not in wb.sheetnames:
         raise ValueError("BVA_DATA sheet not found in Excel database")
 
     ws_data = wb['BVA_DATA']
-
     monthly_data = {}
     months = set()
-
-    # Read header row (row 1)
-    # Expected: Month | DataPoint | DashboardName | Budget | Actual | Variance
 
     for row in range(2, ws_data.max_row + 1):
         month = ws_data.cell(row, 1).value
         data_point = ws_data.cell(row, 2).value
-        dashboard_name = ws_data.cell(row, 3).value
-        budget = ws_data.cell(row, 4).value
-        actual = ws_data.cell(row, 5).value
-        variance = ws_data.cell(row, 6).value
+        # col 3 = Sample Data ROW Number (skip)
+        dashboard_name = ws_data.cell(row, 4).value
+        budget = ws_data.cell(row, 5).value
+        actual = ws_data.cell(row, 6).value
+        variance = ws_data.cell(row, 7).value
 
         if month and data_point:
             months.add(month)
-
             if month not in monthly_data:
                 monthly_data[month] = {}
-
             monthly_data[month][data_point] = {
                 'dashboard_name': dashboard_name or data_point,
-                'budget': float(budget) if budget else 0.0,
-                'actual': float(actual) if actual else 0.0,
-                'variance': float(variance) if variance else 0.0
-            }
-
-    # Read YTD calculations from BVA_CALC
-    if 'BVA_CALC' not in wb.sheetnames:
-        raise ValueError("BVA_CALC sheet not found in Excel database")
-
-    ws_calc = wb['BVA_CALC']
-
-    ytd_data = {}
-
-    # Read calculations (starting from row 2)
-    # Expected: Metric | Method | YTD Budget | YTD Actual | YTD Variance
-
-    for row in range(2, ws_calc.max_row + 1):
-        metric = ws_calc.cell(row, 1).value
-        method = ws_calc.cell(row, 2).value
-        ytd_budget = ws_calc.cell(row, 3).value
-        ytd_actual = ws_calc.cell(row, 4).value
-        ytd_variance = ws_calc.cell(row, 5).value
-
-        if metric:
-            # Get dashboard name from first occurrence in monthly data
-            dashboard_name = metric
-            for month_data in monthly_data.values():
-                if metric in month_data:
-                    dashboard_name = month_data[metric]['dashboard_name']
-                    break
-
-            ytd_data[metric] = {
-                'dashboard_name': dashboard_name,
-                'budget': float(ytd_budget) if ytd_budget else 0.0,
-                'actual': float(ytd_actual) if ytd_actual else 0.0,
-                'variance': float(ytd_variance) if ytd_variance else 0.0
+                'budget': float(budget) if isinstance(budget, (int, float)) else 0.0,
+                'actual': float(actual) if isinstance(actual, (int, float)) else 0.0,
+                'variance': float(variance) if isinstance(variance, (int, float)) else 0.0
             }
 
     wb.close()
 
-    # Prepare dashboard data structure
+    # Read YTD from calculations JSON (already validated and computed)
+    print(f"Reading YTD totals from {calculations_json_path}...")
+    with open(calculations_json_path, 'r') as f:
+        calc_data = json.load(f)
+
+    ytd_data = {}
+    for item in calc_data:
+        metric = item.get('DataPoint')
+        if metric:
+            ytd_data[metric] = {
+                'dashboard_name': item.get('DashboardName', metric),
+                'budget': item.get('YTD_BUDGET', 0.0),
+                'actual': item.get('YTD_ACTUAL', 0.0),
+                'variance': item.get('YTD_VARIANCE', 0.0)
+            }
+
     dashboard_data = {
         'months': sorted(list(months)),
         'monthly_data': monthly_data,
@@ -99,9 +73,7 @@ def read_excel_database(excel_path="Financial-Data-Database.xlsx"):
         'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
-    print(f"  Loaded {len(months)} months")
-    print(f"  Loaded {len(ytd_data)} YTD metrics")
-
+    print(f"  Loaded {len(months)} months, {len(ytd_data)} YTD metrics")
     return dashboard_data
 
 
@@ -140,22 +112,28 @@ def main():
         description="Generate Budget vs Actual dashboard from Excel database"
     )
     parser.add_argument(
-        "--excel",
-        default="Financial-Data-Database.xlsx",
-        help="Path to Excel database (default: Financial-Data-Database.xlsx)"
+        '--company',
+        required=True,
+        help='Company ID (e.g. mudin, mantis)'
     )
     parser.add_argument(
-        "--template",
-        default="templates/dashboard_template.html",
-        help="Path to dashboard template (default: templates/dashboard_template.html)"
+        "--excel",
+        default=None,
+        help="Path to Excel database"
     )
     parser.add_argument(
         "--output",
-        default="dashboard/index.html",
-        help="Path to output HTML (default: dashboard/index.html)"
+        default=None,
+        help="Path to output JSON file"
     )
 
     args = parser.parse_args()
+
+    if args.excel is None:
+        args.excel = f"Financial-Data-Database-{args.company.capitalize()}.xlsx"
+    if args.output is None:
+        args.output = f"dashboard/data/dashboard-{args.company}.json"
+    calculations_json = f"dashboard/data/calculations-{args.company}.json"
 
     print("=" * 60)
     print("DASHBOARD GENERATION (Excel-Based)")
@@ -163,11 +141,16 @@ def main():
     print()
 
     try:
-        # Read from Excel database
-        dashboard_data = read_excel_database(args.excel)
+        # Read monthly data from Excel, YTD from calculations JSON
+        dashboard_data = read_excel_database(args.excel, calculations_json)
 
-        # Generate dashboard
-        generate_dashboard(dashboard_data, args.template, args.output)
+        import json
+        from pathlib import Path
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(dashboard_data, f, indent=2)
+        print(f"  Dashboard data saved to: {output_path}")
 
         print()
         print("=" * 60)

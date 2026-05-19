@@ -6,6 +6,7 @@ Ensures both independent calculation paths produce identical results.
 Acts as data quality check before dashboard deployment.
 """
 
+import argparse
 import json
 import openpyxl
 import sys
@@ -220,19 +221,27 @@ def main():
     """
     Main validation workflow.
     """
+    parser = argparse.ArgumentParser(
+        description="Compare Excel vs JSON calculations"
+    )
+    parser.add_argument('--company', required=True, help='Company ID (e.g. mudin, mantis)')
+    args = parser.parse_args()
+    excel_path = f"Financial-Data-Database-{args.company.capitalize()}.xlsx"
+    json_path = f"dashboard/data/calculations-{args.company}.json"
+
     print("=" * 70)
     print("BUDGET VS ACTUAL - CALCULATION VALIDATION")
     print("=" * 70)
     print()
 
     # Read Excel calculations
-    excel_results = read_excel_calculations()
+    excel_results = read_excel_calculations(excel_path)
     if excel_results is None:
         print("\nERROR: Could not read Excel calculations")
         sys.exit(1)
 
     # Read JSON calculations
-    json_results = read_json_calculations()
+    json_results = read_json_calculations(json_path)
     if json_results is None:
         print("\nERROR: Could not read JSON calculations")
         sys.exit(1)
