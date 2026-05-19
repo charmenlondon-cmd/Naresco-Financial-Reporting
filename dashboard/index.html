@@ -30,8 +30,8 @@
         .header {
             background: white;
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
             margin-bottom: 20px;
             display: flex;
             align-items: center;
@@ -67,28 +67,39 @@
         }
 
         .admin-toggle {
-            background: #93c5fd;
+            background: #3b82f6;
             color: white;
             border: none;
-            padding: 6px 14px;
-            border-radius: 5px;
+            padding: 6px 16px;
+            border-radius: 3px;
             cursor: pointer;
             float: right;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.5;
             margin-top: 18px;
+            letter-spacing: 0.03em;
+            box-shadow: 0 1px 3px rgba(59,130,246,0.4), 0 2px 6px rgba(59,130,246,0.2);
+            transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
         }
 
         .admin-toggle:hover {
-            background: #60a5fa;
-            color: white;
+            background: #2563eb;
+            box-shadow: 0 2px 6px rgba(59,130,246,0.5), 0 4px 12px rgba(59,130,246,0.25);
+            transform: translateY(-1px);
+        }
+
+        .admin-toggle:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(59,130,246,0.3);
         }
 
         .admin-panel {
             background: white;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
             margin-bottom: 20px;
             display: none;
             max-height: 70vh;
@@ -116,15 +127,16 @@
         .format-rule {
             background: #f7fafc;
             padding: 15px;
-            border-radius: 5px;
+            border-radius: 3px;
             margin-bottom: 10px;
+            border-left: 3px solid #e2e8f0;
         }
 
         .format-rule select, .format-rule input {
             margin: 5px;
             padding: 8px;
             border: 1px solid #e2e8f0;
-            border-radius: 4px;
+            border-radius: 2px;
         }
 
         .kpi-grid {
@@ -137,24 +149,26 @@
         .kpi-card {
             background: white;
             padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: box-shadow 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
             position: relative;
-            border: 2px solid transparent;
+            border: 1px solid #e8edf2;
+            border-top: 3px solid #1e40af;
+            text-align: center;
         }
 
         .kpi-card:hover {
-            background: #f0f9ff;
             border-color: #3b82f6;
-            box-shadow: 0 6px 12px rgba(59,130,246,0.15), 0 10px 20px rgba(59,130,246,0.1);
-            transform: translateY(-3px);
+            border-top-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(30,64,175,0.12), 0 8px 24px rgba(30,64,175,0.08);
+            transform: translateY(-2px);
         }
 
         .kpi-card:active {
-            transform: translateY(0px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
 
         .kpi-label {
@@ -169,6 +183,12 @@
             font-weight: bold;
             color: #2d3748;
             margin-bottom: 8px;
+        }
+
+        .kpi-sub-value {
+            font-size: 15px;
+            color: #718096;
+            margin-bottom: 6px;
         }
 
         .kpi-variance {
@@ -187,9 +207,10 @@
         .chart-container {
             background: white;
             padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
             margin-bottom: 20px;
+            border: 1px solid #e8edf2;
         }
 
         .chart-container h2 {
@@ -206,8 +227,9 @@
         .data-table {
             background: white;
             padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
+            border: 1px solid #e8edf2;
             overflow-x: auto;
         }
 
@@ -217,12 +239,14 @@
         }
 
         th {
-            background: #1e40af;
+            background: #1e3a8a;
             color: white;
-            padding: 15px;
+            padding: 12px 15px;
             text-align: left;
             font-weight: 600;
-            letter-spacing: 0.025em;
+            letter-spacing: 0.04em;
+            font-size: 11px;
+            text-transform: uppercase;
         }
 
         td {
@@ -288,28 +312,41 @@
             z-index: 1000; display: flex; align-items: center; justify-content: center;
         }
         .company-selector-card {
-            background: white; border-radius: 16px; padding: 50px;
+            background: white; border-radius: 4px; padding: 50px;
             text-align: center; max-width: 480px; width: 90%;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2);
+            border-top: 4px solid #1e40af;
         }
         .company-btn {
-            display: block; width: 100%; padding: 16px 24px; margin: 10px 0;
-            background: white; border: 2px solid #e2e8f0; border-radius: 10px;
-            font-size: 17px; font-weight: 600; color: #2d3748; cursor: pointer;
-            font-family: 'Poppins', sans-serif; transition: all 0.2s ease;
+            display: block; width: 100%; padding: 15px 24px; margin: 10px 0;
+            background: white; border: 1px solid #d1d5db; border-radius: 3px;
+            font-size: 15px; font-weight: 600; color: #1e3a8a; cursor: pointer;
+            font-family: 'Poppins', sans-serif; transition: all 0.15s ease;
+            letter-spacing: 0.02em;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
         .company-btn:hover {
             background: #1e40af; color: white; border-color: #1e40af;
-            transform: translateY(-2px); box-shadow: 0 8px 20px rgba(30,64,175,0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(30,64,175,0.35);
         }
+        .company-btn:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .company-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .change-company-btn {
-            background: #e2e8f0; color: #4a5568; border: none;
-            padding: 6px 14px; border-radius: 5px; cursor: pointer;
-            float: right; font-size: 12px; font-weight: 500; margin-top: 18px;
-            margin-right: 6px; font-family: 'Poppins', sans-serif;
+            background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+            padding: 6px 16px; border-radius: 3px; cursor: pointer;
+            float: right; font-size: 12px; font-weight: 600; margin-top: 18px;
+            margin-right: 6px; font-family: 'Poppins', sans-serif; line-height: 1.5;
+            letter-spacing: 0.03em;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+            transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
         }
-        .change-company-btn:hover { background: #cbd5e0; }
+        .change-company-btn:hover {
+            background: #e2e8f0; border-color: #94a3b8;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            transform: translateY(-1px);
+        }
+        .change-company-btn:active { transform: translateY(0); box-shadow: none; }
     </style>
 </head>
 <body>
@@ -326,7 +363,7 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="naresco-logo.png" alt="Naresco Logo" class="header-logo">
+            <img src="naresco-logo.png" alt="Company Logo" class="header-logo" id="headerLogo">
             <div class="header-content">
                 <button class="admin-toggle" onclick="toggleAdmin()">Settings</button>
                 <button class="change-company-btn" onclick="changeCompany()">&#8592; Companies</button>
@@ -412,8 +449,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             const storedCompany = sessionStorage.getItem('selectedCompany');
             const storedCompanyName = sessionStorage.getItem('selectedCompanyName');
+            const storedCompanyLogo = sessionStorage.getItem('selectedCompanyLogo');
             if (storedCompany) {
-                selectCompany(storedCompany, storedCompanyName);
+                selectCompany(storedCompany, storedCompanyName, storedCompanyLogo);
             } else {
                 loadCompanySelector();
             }
@@ -431,7 +469,7 @@
                     const btn = document.createElement('button');
                     btn.className = 'company-btn';
                     btn.textContent = c.name;
-                    btn.onclick = () => selectCompany(c.id, c.name);
+                    btn.onclick = () => selectCompany(c.id, c.name, c.logo);
                     container.appendChild(btn);
                 });
             } catch(e) {
@@ -439,7 +477,7 @@
             }
         }
 
-        async function selectCompany(companyId, companyName) {
+        async function selectCompany(companyId, companyName, companyLogo) {
             const btns = document.querySelectorAll('.company-btn');
             btns.forEach(b => { b.disabled = true; b.textContent = 'Loading...'; });
             try {
@@ -448,9 +486,12 @@
                 dashboardData = await res.json();
                 sessionStorage.setItem('selectedCompany', companyId);
                 sessionStorage.setItem('selectedCompanyName', companyName);
+                sessionStorage.setItem('selectedCompanyLogo', companyLogo || '');
                 document.getElementById('companySelector').style.display = 'none';
                 const label = document.getElementById('companyNameLabel');
                 if (label) label.textContent = companyName;
+                const logo = document.getElementById('headerLogo');
+                if (logo && companyLogo) logo.src = companyLogo;
                 initializeDashboard();
             } catch(e) {
                 sessionStorage.removeItem('selectedCompany');
@@ -501,10 +542,22 @@
 
             const kpis = [
                 { key: 'Total Revenue', label: 'Total Revenue', format: 'currency' },
-                { key: 'Contribution Margin', label: 'Contribution Margin', format: 'currency' },
-                { key: 'Gross Profit / (Loss)', label: getDynamicLabel('Gross Profit / (Loss)', ytd), format: 'currency' },
-                { key: 'Net Surplus / (Deflect)', label: getDynamicLabel('Net Surplus / (Deflect)', ytd), format: 'currency' },
-                { key: 'EBITDA', label: 'EBITDA', format: 'currency' }
+                {
+                    key: 'CM %', label: 'Contribution Margin', format: 'percent',
+                    subKey: 'Contribution Margin', subFormat: 'currency'
+                },
+                {
+                    key: 'GP %', label: getDynamicLabel('Gross Profit / (Loss)', ytd), format: 'percent',
+                    subKey: 'Gross Profit / (Loss)', subFormat: 'currency'
+                },
+                {
+                    key: 'NSD %', label: getDynamicLabel('Net Surplus / (Deflect)', ytd), format: 'percent',
+                    subKey: 'Net Surplus / (Deflect)', subFormat: 'currency'
+                },
+                {
+                    key: 'EBITDA %', label: 'EBITDA', format: 'percent',
+                    subKey: 'EBITDA', subFormat: 'currency'
+                }
             ];
 
             kpis.forEach(kpi => {
@@ -514,20 +567,24 @@
                 const varianceClass = data.variance >= 0 ? 'positive' : 'negative';
                 const varianceSign = data.variance >= 0 ? '+' : '';
 
+                const subHtml = kpi.subKey && ytd[kpi.subKey]
+                    ? `<div class="kpi-sub-value">${formatNumberShorthand(ytd[kpi.subKey].actual, kpi.subFormat)}</div>`
+                    : '';
+
                 const card = document.createElement('div');
                 card.className = 'kpi-card';
                 card.setAttribute('data-metric', kpi.key);
                 card.innerHTML = `
                     <div class="kpi-label">${kpi.label}</div>
                     <div class="kpi-value">${formatNumberShorthand(data.actual, kpi.format)}</div>
+                    ${subHtml}
                     <div class="kpi-variance ${varianceClass}">
                         ${varianceSign}${formatNumberShorthand(data.variance, kpi.format)} vs Budget
                     </div>
                 `;
 
-                // Add click handler to scroll to and highlight row
                 card.addEventListener('click', function() {
-                    highlightTableRow(kpi.key);
+                    highlightTableRow(kpi.subKey || kpi.key);
                 });
 
                 grid.appendChild(card);
@@ -559,14 +616,8 @@
             const budgetData = months.map(m => monthlyData[m]['Total Revenue']?.budget || 0);
             const actualData = months.map(m => monthlyData[m]['Total Revenue']?.actual || 0);
 
-            // Create gradients - Corporate blue for budget
-            const budgetGradient = ctx.createLinearGradient(0, 0, 0, 400);
-            budgetGradient.addColorStop(0, 'rgba(30, 64, 175, 0.4)');
-            budgetGradient.addColorStop(1, 'rgba(30, 64, 175, 0.0)');
-
-            const actualGradient = ctx.createLinearGradient(0, 0, 0, 400);
-            actualGradient.addColorStop(0, 'rgba(34, 197, 94, 0.4)');
-            actualGradient.addColorStop(1, 'rgba(34, 197, 94, 0.0)');
+            const budgetGradient = 'rgba(122, 158, 196, 0.15)';
+            const actualGradient = 'rgba(94, 158, 130, 0.15)';
 
             new Chart(ctx, {
                 type: 'line',
@@ -576,35 +627,35 @@
                         {
                             label: 'Budget',
                             data: budgetData,
-                            borderColor: '#1e40af',
+                            borderColor: '#7a9ec4',
                             backgroundColor: budgetGradient,
-                            borderWidth: 4,
+                            borderWidth: 2,
                             tension: 0.4,
                             fill: true,
                             pointRadius: 6,
                             pointHoverRadius: 8,
-                            pointBackgroundColor: '#1e40af',
+                            pointBackgroundColor: '#7a9ec4',
                             pointBorderColor: '#fff',
-                            pointBorderWidth: 3,
+                            pointBorderWidth: 2,
                             pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: '#1e40af',
+                            pointHoverBorderColor: '#7a9ec4',
                             pointHoverBorderWidth: 3
                         },
                         {
                             label: 'Actual',
                             data: actualData,
-                            borderColor: '#22c55e',
+                            borderColor: '#5e9e82',
                             backgroundColor: actualGradient,
-                            borderWidth: 4,
+                            borderWidth: 2,
                             tension: 0.4,
                             fill: true,
                             pointRadius: 6,
                             pointHoverRadius: 8,
-                            pointBackgroundColor: '#22c55e',
+                            pointBackgroundColor: '#5e9e82',
                             pointBorderColor: '#fff',
-                            pointBorderWidth: 3,
+                            pointBorderWidth: 2,
                             pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: '#22c55e',
+                            pointHoverBorderColor: '#5e9e82',
                             pointHoverBorderWidth: 3
                         }
                     ]
@@ -727,22 +778,30 @@
                     datasets: [{
                         label: 'Budget',
                         data: budgets,
-                        backgroundColor: '#93c5fd',
-                        borderColor: '#3b82f6',
-                        borderWidth: 2,
-                        borderRadius: 6
+                        backgroundColor: '#7a9ec4',
+                        borderWidth: 0,
+                        borderRadius: 2
                     }, {
                         label: 'Actual',
                         data: actuals,
-                        backgroundColor: '#86efac',
-                        borderColor: '#22c55e',
-                        borderWidth: 2,
-                        borderRadius: 6
+                        backgroundColor: '#5e9e82',
+                        borderWidth: 0,
+                        borderRadius: 2
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    barPercentage: 0.55,
+                    categoryPercentage: 0.65,
+                    onClick: function(event, elements) {
+                        if (elements.length > 0) {
+                            highlightTableRow(metrics[elements[0].index]);
+                        }
+                    },
+                    onHover: function(event, elements) {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    },
                     plugins: {
                         legend: {
                             display: true,
@@ -843,35 +902,8 @@
             });
             const variances = metrics.map(m => ytd[m]?.variance || 0);
 
-            // Create gradient colors for bars based on variance direction
-            // Color logic for VARIANCE:
-            // - Cost metrics: positive variance = bad (red), negative = good (green)
-            // - Revenue/Profit/Margin metrics: positive variance = good (green), negative = bad (red)
             const backgroundColors = variances.map((v, i) => {
-                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                const metricName = metrics[i].toLowerCase();
-                const isCostMetric = metricName.includes('cost');
-
-                // Determine if variance is good or bad
-                // For costs: negative variance (under budget) is good
-                // For revenue/profit: positive variance (over budget) is good
-                const isGood = isCostMetric ? (v < 0) : (v >= 0);
-
-                if (isGood) {
-                    gradient.addColorStop(0, '#22c55e');
-                    gradient.addColorStop(1, '#16a34a');
-                } else {
-                    gradient.addColorStop(0, '#ef4444');
-                    gradient.addColorStop(1, '#dc2626');
-                }
-                return gradient;
-            });
-
-            const borderColors = variances.map((v, i) => {
-                const metricName = metrics[i].toLowerCase();
-                const isCostMetric = metricName.includes('cost');
-                const isGood = isCostMetric ? (v < 0) : (v >= 0);
-                return isGood ? '#16a34a' : '#dc2626';
+                return v >= 0 ? '#5a9974' : '#b87878';
             });
 
             new Chart(ctx, {
@@ -882,15 +914,24 @@
                         label: 'Variance',
                         data: variances,
                         backgroundColor: backgroundColors,
-                        borderColor: borderColors,
-                        borderWidth: 2,
-                        borderRadius: 8,
+                        borderWidth: 0,
+                        borderRadius: 2,
                         borderSkipped: false
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    barPercentage: 0.55,
+                    categoryPercentage: 0.65,
+                    onClick: function(event, elements) {
+                        if (elements.length > 0) {
+                            highlightTableRow(metrics[elements[0].index]);
+                        }
+                    },
+                    onHover: function(event, elements) {
+                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                    },
                     plugins: {
                         legend: {
                             display: false

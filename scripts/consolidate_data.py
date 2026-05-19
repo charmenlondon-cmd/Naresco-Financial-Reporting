@@ -77,16 +77,16 @@ def consolidate_metrics(raw_data):
         is_percentage = data_point in PERCENTAGE_METRICS
 
         if is_percentage:
-            # Use AVERAGE for percentages
+            # Use AVERAGE for percentages — preserve source variance sign (costs: B-A, revenue: A-B)
             ytd_budget = sum(values['budget_values']) / len(values['budget_values']) if values['budget_values'] else 0
             ytd_actual = sum(values['actual_values']) / len(values['actual_values']) if values['actual_values'] else 0
-            ytd_variance = ytd_actual - ytd_budget  # Variance = Actual - Budget
+            ytd_variance = sum(values['variance_values']) / len(values['variance_values']) if values['variance_values'] else 0
             agg_method = "AVERAGE"
         else:
-            # Use SUM for absolute values
+            # Use SUM for absolute values — preserve source variance sign (costs: B-A, revenue: A-B)
             ytd_budget = sum(values['budget_values'])
             ytd_actual = sum(values['actual_values'])
-            ytd_variance = ytd_actual - ytd_budget  # Variance = Actual - Budget
+            ytd_variance = sum(values['variance_values'])
             agg_method = "SUM"
 
         consolidated.append({

@@ -11,6 +11,9 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
+MONTH_ORDER = ["January","February","March","April","May","June",
+               "July","August","September","October","November","December"]
+
 
 def read_excel_database(excel_path, calculations_json_path):
     """
@@ -67,7 +70,7 @@ def read_excel_database(excel_path, calculations_json_path):
             }
 
     dashboard_data = {
-        'months': sorted(list(months)),
+        'months': sorted(list(months), key=lambda m: MONTH_ORDER.index(m) if m in MONTH_ORDER else 99),
         'monthly_data': monthly_data,
         'ytd_data': ytd_data,
         'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
