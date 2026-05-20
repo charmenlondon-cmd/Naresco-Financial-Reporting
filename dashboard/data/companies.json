@@ -1,4 +1,4 @@
 [
-  {"id": "mudin", "name": "Mudin Al Emerat"},
-  {"id": "mantis", "name": "Mantis"}
+  {"id": "mudin", "name": "Mudin Al Emerat", "logo": "naresco-logo.png"},
+  {"id": "mantis", "name": "Mantis", "logo": "mantis-logo.jpg"}
 ]

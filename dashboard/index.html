@@ -179,7 +179,7 @@
         }
 
         .kpi-value {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
             color: #2d3748;
             margin-bottom: 8px;
@@ -296,6 +296,86 @@
         .variance-negative {
             color: #f56565;
             font-weight: 600;
+        }
+
+        /* Eye icon column */
+        .eye-col { width: 36px; text-align: center; padding: 0; }
+        .eye-btn {
+            background: none; border: none; cursor: pointer;
+            color: #cbd5e1; padding: 5px; border-radius: 3px;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: color 0.15s ease;
+            line-height: 1;
+        }
+        .eye-btn:hover { color: #3b82f6; }
+        .eye-btn.eye-active { color: #1e40af; }
+        .eye-btn.eye-disabled { cursor: default; opacity: 0.3; }
+
+        /* Detail panel */
+        .detail-panel {
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
+            border: 1px solid #e8edf2;
+            border-top: 3px solid #1e40af;
+            margin-top: 20px;
+            padding: 25px;
+        }
+        .detail-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 18px; padding-bottom: 14px;
+            border-bottom: 1px solid #e8edf2;
+        }
+        .detail-panel-header h3 {
+            color: #1e3a8a; font-size: 15px; font-weight: 700;
+            letter-spacing: 0.02em; text-transform: uppercase;
+        }
+        .detail-close-btn {
+            background: #f1f5f9; border: 1px solid #cbd5e1; color: #64748b;
+            padding: 5px 14px; border-radius: 3px; cursor: pointer;
+            font-size: 12px; font-weight: 600; font-family: 'Poppins', sans-serif;
+            transition: background 0.15s ease;
+        }
+        .detail-close-btn:hover { background: #e2e8f0; }
+        .detail-month-selector {
+            display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+            background: #f8fafc; border: 1px solid #e8edf2; border-radius: 3px;
+            padding: 12px 18px; margin-bottom: 20px;
+        }
+        .detail-month-selector .selector-label {
+            font-size: 12px; font-weight: 700; color: #475569;
+            text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+        }
+        .detail-month-checkboxes { display: flex; gap: 18px; flex-wrap: wrap; }
+        .detail-month-checkboxes label {
+            font-size: 13px; color: #475569; cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .detail-month-checkboxes input[type=checkbox] { cursor: pointer; }
+        .detail-fetch-btn {
+            background: #1e40af; color: white; border: none;
+            padding: 7px 20px; border-radius: 3px; cursor: pointer;
+            font-size: 12px; font-weight: 700; font-family: 'Poppins', sans-serif;
+            letter-spacing: 0.04em;
+            box-shadow: 0 1px 3px rgba(30,64,175,0.4);
+            transition: background 0.15s ease, transform 0.1s ease;
+            white-space: nowrap;
+        }
+        .detail-fetch-btn:hover { background: #1e3a8a; transform: translateY(-1px); }
+        .detail-fetch-btn:active { transform: translateY(0); }
+        .detail-table-wrap { overflow-x: auto; }
+        #detailDataTable {
+            width: auto;
+            min-width: 100%;
+            white-space: nowrap;
+        }
+        #detailDataTable th { font-size: 11px; min-width: 110px; }
+        #detailDataTable th:first-child { min-width: 220px; }
+        #detailDataTable td { font-size: 13px; }
+        #detailDataTable td:first-child { white-space: normal; min-width: 220px; }
+        #detailDataTable tr.detail-total-row td {
+            font-weight: 700; border-top: 2px solid #1e3a8a;
+            background: #f0f4ff;
         }
 
         .footer {
@@ -426,12 +506,38 @@
                         <th class="number">Budget</th>
                         <th class="number">Actual</th>
                         <th class="number">Variance</th>
+                        <th class="eye-col"></th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
                     <!-- Rows will be generated dynamically -->
                 </tbody>
             </table>
+        </div>
+
+        <!-- Line Detail Panel -->
+        <div class="detail-panel" id="detailPanel" style="display:none;">
+            <div class="detail-panel-header">
+                <h3 id="detailPanelTitle">Detail</h3>
+                <button class="detail-close-btn" onclick="closeDetailPanel()">Close ✕</button>
+            </div>
+            <div class="detail-month-selector">
+                <span class="selector-label">Months:</span>
+                <div class="detail-month-checkboxes" id="detailMonthCheckboxes"></div>
+                <button class="detail-fetch-btn" onclick="fetchDetailData()">Fetch</button>
+            </div>
+            <div class="detail-table-wrap">
+                <table id="detailDataTable">
+                    <thead id="detailDataTableHead"><tr>
+                        <th>Code</th>
+                        <th>Site / Description</th>
+                        <th class="number">YTD Total</th>
+                    </tr></thead>
+                    <tbody id="detailDataTableBody">
+                        <tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:20px;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Footer -->
@@ -796,7 +902,7 @@
                     categoryPercentage: 0.65,
                     onClick: function(event, elements) {
                         if (elements.length > 0) {
-                            highlightTableRow(metrics[elements[0].index]);
+                            handleChartClick(metrics[elements[0].index]);
                         }
                     },
                     onHover: function(event, elements) {
@@ -924,9 +1030,16 @@
                     maintainAspectRatio: false,
                     barPercentage: 0.55,
                     categoryPercentage: 0.65,
-                    onClick: function(event, elements) {
+                    onClick: function(event, elements, chart) {
                         if (elements.length > 0) {
-                            highlightTableRow(metrics[elements[0].index]);
+                            handleChartClick(metrics[elements[0].index]);
+                        } else {
+                            // Allow clicking on x-axis labels when bar is too small to hit
+                            const xAxis = chart.scales.x;
+                            const idx = xAxis.getValueForPixel(event.x);
+                            if (idx !== undefined && idx >= 0 && idx < metrics.length) {
+                                handleChartClick(metrics[Math.round(idx)]);
+                            }
                         }
                     },
                     onHover: function(event, elements) {
@@ -995,6 +1108,18 @@
             });
         }
 
+        const EYE_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+
+        // Metrics that have drill-down detail data available
+        // value = data type used by the loader ('revenue' | 'section')
+        // slug = filename slug for section types
+        const DETAIL_METRICS = {
+            'Total Revenue':                  {type: 'revenue'},
+            'Total Variable Cost':            {type: 'section', slug: 'variable-costs', label: 'Variable Costs'},
+            'Total Staff Cost (Direct)':      {type: 'section', slug: 'fixed-costs',    label: 'Fixed Costs (Direct)',   filterZeroVariance: true},
+            'Total Fixed Cost (Indirect)':    {type: 'section', slug: 'indirect-costs', label: 'Indirect Costs',         filterZeroVariance: true},
+        };
+
         function generateDataTable() {
             const tbody = document.getElementById('tableBody');
             const ytd = dashboardData.ytd_data;
@@ -1021,6 +1146,10 @@
                 const data = ytd[metricKey];
                 const isPercent = metricKey.includes('%');
                 const format = isPercent ? 'percent' : 'currency';
+                const hasDetail = !!DETAIL_METRICS[metricKey];
+                const eyeClass = hasDetail ? 'eye-btn' : 'eye-btn eye-disabled';
+                const eyeTitle = hasDetail ? 'View line detail' : 'No detail available';
+                const eyeOnClick = hasDetail ? `toggleDetailPanel('${metricKey}', this)` : '';
 
                 const row = document.createElement('tr');
                 row.setAttribute('data-metric', metricKey);
@@ -1029,6 +1158,7 @@
                     <td class="number">${formatNumber(data.budget, format)}</td>
                     <td class="number actual-cell" data-actual="${data.actual}">${formatNumber(data.actual, format)}</td>
                     <td class="number variance-cell" data-variance="${data.variance}">${formatNumber(data.variance, format)}</td>
+                    <td class="eye-col"><button class="${eyeClass}" title="${eyeTitle}" ${eyeOnClick ? `onclick="${eyeOnClick}"` : ''}>${EYE_SVG}</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -1190,6 +1320,31 @@
             });
         }
 
+        function applyFormattingToDetailTable() {
+            if (!activeDetailMetric) return;
+            const rules = formattingRules[activeDetailMetric];
+            if (!rules || rules.length === 0) return;
+
+            document.querySelectorAll('#detailDataTableBody tr:not(.detail-total-row)').forEach(row => {
+                const actualCells   = row.querySelectorAll('.detail-actual-cell');
+                const varianceCells = row.querySelectorAll('.detail-variance-cell');
+
+                // Reset styles first
+                [...actualCells, ...varianceCells].forEach(c => { c.style.color = ''; c.style.background = ''; });
+
+                rules.forEach(rule => {
+                    const cells = rule.column === 'actual' ? actualCells : varianceCells;
+                    cells.forEach(cell => {
+                        const value = parseFloat(cell.getAttribute('data-value') || 0);
+                        if (checkCondition(value, rule.condition, rule.value)) {
+                            if (rule.action === 'color') cell.style.color = rule.color;
+                            else cell.style.background = rule.color;
+                        }
+                    });
+                });
+            });
+        }
+
         function checkCondition(value, condition, target) {
             switch(condition) {
                 case '>': return value > target;
@@ -1252,6 +1407,188 @@
             }
             return value.toLocaleString();
         }
+
+        function handleChartClick(metricKey) {
+            highlightTableRow(metricKey);
+        }
+
+        // ── Detail Panel ──────────────────────────────────────────────
+        let activeDetailMetric = null;
+        let activeEyeBtn = null;
+        const detailDataCache = {};
+
+        async function toggleDetailPanel(metric, btn) {
+            const panel = document.getElementById('detailPanel');
+            if (activeDetailMetric === metric && panel.style.display !== 'none') {
+                closeDetailPanel();
+                return;
+            }
+            if (activeEyeBtn) activeEyeBtn.classList.remove('eye-active');
+            activeDetailMetric = metric;
+            activeEyeBtn = btn;
+            btn.classList.add('eye-active');
+
+            document.getElementById('detailPanelTitle').textContent =
+                getDynamicLabel(metric, dashboardData.ytd_data) + ' — Line Detail';
+            panel.style.display = 'block';
+
+            const detailConfig = DETAIL_METRICS[metric];
+            if (detailConfig.type === 'revenue') await loadRevenueDetail();
+            else if (detailConfig.type === 'section') await loadSectionDetail(detailConfig.slug);
+
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function closeDetailPanel() {
+            document.getElementById('detailPanel').style.display = 'none';
+            if (activeEyeBtn) activeEyeBtn.classList.remove('eye-active');
+            activeDetailMetric = null;
+            activeEyeBtn = null;
+        }
+
+        async function loadRevenueDetail() {
+            const companyId = sessionStorage.getItem('selectedCompany');
+            if (!detailDataCache.revenue) {
+                try {
+                    const res = await fetch(`data/revenue-${companyId}.json`);
+                    if (!res.ok) throw new Error('not found');
+                    detailDataCache.revenue = await res.json();
+                } catch(e) {
+                    document.getElementById('detailDataTableBody').innerHTML =
+                        '<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:24px;">No revenue detail data found. Run the update pipeline first.</td></tr>';
+                    document.getElementById('detailMonthCheckboxes').innerHTML = '';
+                    return;
+                }
+            }
+            const data = detailDataCache.revenue;
+            const container = document.getElementById('detailMonthCheckboxes');
+            container.innerHTML = '';
+            data.months.forEach(month => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${month}"> ${month}`;
+                container.appendChild(label);
+            });
+            renderRevenueTable([]);
+        }
+
+        function fetchDetailData() {
+            const detailConfig = DETAIL_METRICS[activeDetailMetric];
+            if (!detailConfig) return;
+            const checked = Array.from(
+                document.querySelectorAll('#detailMonthCheckboxes input:checked')
+            ).map(cb => cb.value);
+            if (detailConfig.type === 'revenue') renderRevenueTable(checked);
+            else if (detailConfig.type === 'section') renderSectionTable(detailConfig.slug, checked);
+        }
+
+        async function loadSectionDetail(slug) {
+            const companyId = sessionStorage.getItem('selectedCompany');
+            const cacheKey = `section_${slug}`;
+            if (!detailDataCache[cacheKey]) {
+                try {
+                    const res = await fetch(`data/${slug}-${companyId}.json`);
+                    if (!res.ok) throw new Error('not found');
+                    detailDataCache[cacheKey] = await res.json();
+                } catch(e) {
+                    document.getElementById('detailDataTableBody').innerHTML =
+                        '<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:24px;">No detail data found. Run the update pipeline first.</td></tr>';
+                    document.getElementById('detailMonthCheckboxes').innerHTML = '';
+                    return;
+                }
+            }
+            const data = detailDataCache[cacheKey];
+            const container = document.getElementById('detailMonthCheckboxes');
+            container.innerHTML = '';
+            data.months.forEach(month => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${month}"> ${month}`;
+                container.appendChild(label);
+            });
+            renderSectionTable(slug, []);
+        }
+
+        function renderSectionTable(slug, selectedMonths) {
+            const cacheKey = `section_${slug}`;
+            const data = detailDataCache[cacheKey];
+            if (!data) return;
+
+            const detailConfig = Object.values(DETAIL_METRICS).find(d => d.slug === slug);
+            const filterZero = detailConfig && detailConfig.filterZeroVariance;
+
+            const monthCols = data.months.filter(m => selectedMonths.includes(m));
+
+            // Header
+            let headHtml = '<tr><th>Description</th>';
+            monthCols.forEach(m => {
+                headHtml += `<th class="number">${m} Budget</th><th class="number">${m} Actual</th><th class="number">${m} Variance</th>`;
+            });
+            headHtml += '<th class="number">YTD Budget</th><th class="number">YTD Actual</th><th class="number">YTD Variance</th></tr>';
+            document.getElementById('detailDataTableHead').innerHTML = headHtml;
+
+            const tbody = document.getElementById('detailDataTableBody');
+            tbody.innerHTML = '';
+
+            const totalRow = data.rows[data.rows.length - 1];
+
+            data.rows.forEach(row => {
+                const isTotal = row === totalRow;
+                const ytd = row['YTD'] || {budget: 0, actual: 0, variance: 0};
+
+                // Skip zero-variance rows (except the totals row)
+                if (filterZero && !isTotal && ytd.variance === 0) return;
+
+                const tr = document.createElement('tr');
+                if (isTotal) tr.className = 'detail-total-row';
+
+                let cells = `<td class="metric-name">${row.description}</td>`;
+                monthCols.forEach(m => {
+                    const vals = row[m] || {budget: 0, actual: 0, variance: 0};
+                    cells += `<td class="number">${formatNumber(vals.budget, 'currency')}</td>`;
+                    cells += `<td class="number detail-actual-cell" data-value="${vals.actual}">${formatNumber(vals.actual, 'currency')}</td>`;
+                    cells += `<td class="number detail-variance-cell" data-value="${vals.variance}">${formatNumber(vals.variance, 'currency')}</td>`;
+                });
+                cells += `<td class="number">${formatNumber(ytd.budget, 'currency')}</td>`;
+                cells += `<td class="number detail-actual-cell" data-value="${ytd.actual}">${formatNumber(ytd.actual, 'currency')}</td>`;
+                cells += `<td class="number detail-variance-cell" data-value="${ytd.variance}">${formatNumber(ytd.variance, 'currency')}</td>`;
+                tr.innerHTML = cells;
+                tbody.appendChild(tr);
+            });
+
+            applyFormattingToDetailTable();
+        }
+
+        function renderRevenueTable(selectedMonths) {
+            const data = detailDataCache.revenue;
+            if (!data) return;
+
+            // Months in source order, filtered to selected
+            const monthCols = data.months.filter(m => selectedMonths.includes(m));
+
+            // Header
+            document.getElementById('detailDataTableHead').innerHTML = `<tr>
+                <th>Code</th>
+                <th>Site / Description</th>
+                ${monthCols.map(m => `<th class="number">${m}</th>`).join('')}
+                <th class="number">YTD Total</th>
+            </tr>`;
+
+            // Body
+            const tbody = document.getElementById('detailDataTableBody');
+            tbody.innerHTML = '';
+            data.rows.forEach(row => {
+                const isTotal = !row.code;
+                const tr = document.createElement('tr');
+                if (isTotal) tr.className = 'detail-total-row';
+                tr.innerHTML = `
+                    <td class="metric-name">${row.code || ''}</td>
+                    <td class="metric-name">${row.particulars}</td>
+                    ${monthCols.map(m => `<td class="number">${formatNumber(row[m] || 0, 'currency')}</td>`).join('')}
+                    <td class="number">${formatNumber(row['YTD Total'] || 0, 'currency')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        // ── End Detail Panel ──────────────────────────────────────────
 
         function formatNumberShorthand(value, type) {
             const absValue = Math.abs(value);

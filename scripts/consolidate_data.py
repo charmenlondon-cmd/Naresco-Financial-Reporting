@@ -2,7 +2,8 @@
 Budget vs Actual Data Consolidation Script
 
 Aggregates raw monthly data into YTD (Year-to-Date) totals.
-Implements SUMIF logic for absolute values and AVERAGEIF for percentages.
+Absolute metrics: SUM across months.
+Percentage metrics: derived from YTD numerator / YTD denominator (not averaged).
 """
 
 import json
@@ -11,50 +12,34 @@ from pathlib import Path
 from collections import defaultdict
 
 
-# Percentage metrics use AVERAGE, others use SUM
-PERCENTAGE_METRICS = [
-    "TVC %",
-    "CM %",
-    "TSCD %",
-    "GP %",
-    "TFCI %",
-    "NSD %",
-    "EBITDA %"
-]
+# Percentage metrics are derived, not summed/averaged
+PERCENTAGE_METRICS = ["TVC %", "CM %", "TSCD %", "GP %", "TFCI %", "NSD %", "EBITDA %"]
+
+# How each % is derived: (numerator metric, denominator metric, variance sign)
+# variance sign: 'cost' = Budget-Actual (positive=underspend=good)
+#                'profit' = Actual-Budget (positive=above budget=good)
+PCT_DERIVATIONS = {
+    "TVC %":  ("Total Variable Cost",        "Total Revenue", "cost"),
+    "CM %":   ("Contribution Margin",         "Total Revenue", "profit"),
+    "TSCD %": ("Total Staff Cost (Direct)",   "Total Revenue", "cost"),
+    "GP %":   ("Gross Profit / (Loss)",       "Total Revenue", "profit"),
+    "TFCI %": ("Total Fixed Cost (Indirect)", "Total Revenue", "cost"),
+    "NSD %":  ("Net Surplus / (Deflect)",     "Total Revenue", "profit"),
+}
 
 
 def load_raw_data(input_path):
-    """
-    Load raw data from JSON file.
-
-    Args:
-        input_path: Path to raw-data.json file
-
-    Returns:
-        list: Raw data records
-    """
     with open(input_path, 'r') as f:
         data = json.load(f)
-
     print(f"Loaded {len(data)} records from {input_path}")
-
     return data
 
 
 def consolidate_metrics(raw_data):
     """
     Consolidate raw monthly data into YTD totals.
-
-    For absolute values (Revenue, Costs, etc.): SUM across months
-    For percentages (%, etc.): AVERAGE across months
-
-    Args:
-        raw_data: List of raw data records
-
-    Returns:
-        list: Consolidated YTD data
+    Absolute metrics are summed; percentage metrics are derived from YTD absolutes.
     """
-    # Group data by DataPoint
     grouped = defaultdict(lambda: {
         'dashboard_name': '',
         'budget_values': [],
@@ -63,42 +48,57 @@ def consolidate_metrics(raw_data):
     })
 
     for record in raw_data:
-        data_point = record['DataPoint']
-        grouped[data_point]['dashboard_name'] = record['DashboardName']
-        grouped[data_point]['budget_values'].append(record['Budget'])
-        grouped[data_point]['actual_values'].append(record['Actual'])
-        grouped[data_point]['variance_values'].append(record['Variance'])
+        dp = record['DataPoint']
+        grouped[dp]['dashboard_name'] = record['DashboardName']
+        grouped[dp]['budget_values'].append(record['Budget'])
+        grouped[dp]['actual_values'].append(record['Actual'])
+        grouped[dp]['variance_values'].append(record['Variance'])
 
-    # Calculate YTD totals
     consolidated = []
 
+    # Step 1: SUM all absolute (non-percentage) metrics
     for data_point, values in grouped.items():
-        # Determine aggregation method
-        is_percentage = data_point in PERCENTAGE_METRICS
+        if data_point in PERCENTAGE_METRICS:
+            continue  # derived in step 2
 
-        if is_percentage:
-            # Use AVERAGE for percentages — preserve source variance sign (costs: B-A, revenue: A-B)
-            ytd_budget = sum(values['budget_values']) / len(values['budget_values']) if values['budget_values'] else 0
-            ytd_actual = sum(values['actual_values']) / len(values['actual_values']) if values['actual_values'] else 0
-            ytd_variance = sum(values['variance_values']) / len(values['variance_values']) if values['variance_values'] else 0
-            agg_method = "AVERAGE"
-        else:
-            # Use SUM for absolute values — preserve source variance sign (costs: B-A, revenue: A-B)
-            ytd_budget = sum(values['budget_values'])
-            ytd_actual = sum(values['actual_values'])
-            ytd_variance = sum(values['variance_values'])
-            agg_method = "SUM"
+        ytd_budget   = sum(values['budget_values'])
+        ytd_actual   = sum(values['actual_values'])
+        ytd_variance = sum(values['variance_values'])
 
         consolidated.append({
-            'DataPoint': data_point,
-            'DashboardName': values['dashboard_name'],
-            'YTD_BUDGET': ytd_budget,
-            'YTD_ACTUAL': ytd_actual,
-            'YTD_VARIANCE': ytd_variance,
-            'AggregationMethod': agg_method
+            'DataPoint':         data_point,
+            'DashboardName':     values['dashboard_name'],
+            'YTD_BUDGET':        ytd_budget,
+            'YTD_ACTUAL':        ytd_actual,
+            'YTD_VARIANCE':      ytd_variance,
+            'AggregationMethod': 'SUM'
         })
+        print(f"  [SUM] {data_point}: Budget={ytd_budget:.2f}, Actual={ytd_actual:.2f}, Variance={ytd_variance:.2f}")
 
-        print(f"  [{agg_method}] {data_point}: Budget={ytd_budget:.2f}, Actual={ytd_actual:.2f}, Variance={ytd_variance:.2f}")
+    # Step 2: Derive percentage metrics from YTD absolutes
+    abs_lookup = {r['DataPoint']: r for r in consolidated}
+
+    for pct_metric, (num_key, den_key, sign) in PCT_DERIVATIONS.items():
+        if pct_metric not in grouped:
+            continue
+
+        num = abs_lookup.get(num_key)
+        den = abs_lookup.get(den_key)
+        dashboard_name = grouped[pct_metric]['dashboard_name']
+
+        pct_budget = num['YTD_BUDGET'] / den['YTD_BUDGET'] if (num and den and den['YTD_BUDGET']) else 0.0
+        pct_actual = num['YTD_ACTUAL'] / den['YTD_ACTUAL'] if (num and den and den['YTD_ACTUAL']) else 0.0
+        pct_variance = (pct_budget - pct_actual) if sign == 'cost' else (pct_actual - pct_budget)
+
+        consolidated.append({
+            'DataPoint':         pct_metric,
+            'DashboardName':     dashboard_name,
+            'YTD_BUDGET':        pct_budget,
+            'YTD_ACTUAL':        pct_actual,
+            'YTD_VARIANCE':      pct_variance,
+            'AggregationMethod': 'DERIVED'
+        })
+        print(f"  [DERIVED] {pct_metric}: Budget={pct_budget*100:.3f}%, Actual={pct_actual*100:.3f}%, Variance={pct_variance*100:.3f}%")
 
     return consolidated
 

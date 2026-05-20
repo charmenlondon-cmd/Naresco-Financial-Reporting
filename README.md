@@ -1,351 +1,297 @@
 # Naresco Financial Reporting
 
-Automated financial reporting system with dual-path validation for Budget vs Actual dashboards.
+Multi-company financial reporting system with interactive Budget vs Actual dashboards, line-item drill-downs, and automated data validation.
 
 **Hosting**: Internal server (secure, on-premises)
 
 ---
 
-## 🎯 What This Does
+## What This Does
 
-Finance team drops a new Excel file → System processes and validates data → Dashboard auto-updates
+Finance team drops source Excel files → System processes and validates data → Dashboard auto-updates with full drill-down capability per company.
 
 **Key Features:**
-- ✅ **One-Click Updates**: Drop file + double-click = Done
-- ✅ **Dual-Path Validation**: Excel + JSON must match before deploying
-- ✅ **Growing Database**: Data accumulates month-over-month
-- ✅ **Interactive Dashboard**: Click KPI cards to jump to details
-- ✅ **Shorthand Formatting**: Fortune 500-style numbers (AED 1.28M vs AED 1,279,576)
-- ✅ **Personalized Views**: Each user customizes their own dashboard settings
-- ✅ **Secure Hosting**: Data stays on-premises, never leaves internal network
+- **Multi-Company**: Company selector on load; each company has its own isolated database
+- **5 KPI Cards**: Revenue, Contribution Margin %, Gross Profit %, Net Profit %, EBITDA %
+- **Dual-Path Validation**: Excel + JSON must match before deploying
+- **Correct YTD Percentages**: Derived from YTD numerator ÷ denominator (not averaged monthly)
+- **Correct Variance Convention**: Revenue = Actual − Budget; Costs = Budget − Actual
+- **Line-Item Drill-Downs**: Click eye icon on any metric row to see underlying line items
+- **Conditional Formatting**: Rules set on parent metrics cascade to child drill-down rows
+- **Growing Database**: Data accumulates month-over-month per company
+- **Secure Hosting**: Data stays on-premises, never leaves internal network
 
 ---
 
-## 📁 Project Structure
+## Companies
+
+| ID | Full Name | Source File Pattern |
+|---|---|---|
+| `mantis` | Mantis | `Mantis*.xlsx` |
+| `mudin` | Mudin Al Emerat (MAE) | `Mudin*.xlsx` or `MAE*.xlsx` |
+
+New companies can be added by updating `dashboard/data/companies.json`.
+
+---
+
+## Project Structure
 
 ```
 Naresco-Financial-Reporting/
 │
-├── source-files/                    # DROP NEW EXCEL FILES HERE
+├── source-files/                       # DROP NEW EXCEL FILES HERE
 │   └── README.md
 │
-├── scripts/                         # Python processing scripts
-│   ├── extract_to_excel_database.py    # PATH A: Extract to Excel
-│   ├── extract_budget_data.py          # PATH B: Extract to JSON
-│   ├── consolidate_data.py             # PATH B: Consolidate JSON
-│   ├── compare_calculations.py         # Validate Excel vs JSON
-│   └── generate_dashboard_from_excel.py # Generate from validated Excel
+├── scripts/                            # Python processing scripts
+│   ├── extract_to_excel_database.py    # Extract BVA data to Excel DB (BVA_DATA/BVA_CALC)
+│   ├── extract_budget_data.py          # Extract BVA data to JSON
+│   ├── extract_revenue_data.py         # Extract Revenue tab line items to DB
+│   ├── extract_section_data.py         # Extract cost section line items to DB (config-driven)
+│   ├── consolidate_data.py             # Aggregate JSON to YTD totals
+│   ├── compare_calculations.py         # Validate Excel vs JSON calculations
+│   └── generate_dashboard_from_excel.py # Generate dashboard + detail JSON files
 │
 ├── templates/
-│   └── dashboard_template.html      # Dashboard HTML template
+│   └── dashboard_template.html         # Static dashboard template (= dashboard/index.html)
 │
-├── dashboard/                       # Generated dashboard (deployed)
-│   ├── index.html                   # Generated dashboard
-│   ├── naresco-logo.png            # Company logo
-│   └── data/                       # JSON files (validation path)
+├── dashboard/                          # Served by web server
+│   ├── index.html                      # Dashboard app (copy of template)
+│   ├── naresco-logo.png                # Naresco group logo
+│   ├── mantis-logo.jpg                 # Mantis company logo
+│   └── data/                           # JSON data files (generated, not committed)
+│       ├── companies.json              # Company list + logo paths (committed)
+│       ├── dashboard-{company}.json    # BVA dashboard data per company
+│       ├── calculations-{company}.json # YTD calculations per company
+│       ├── raw-data-{company}.json     # Monthly raw data per company
+│       ├── revenue-{company}.json      # Revenue line-item detail per company
+│       ├── variable-costs-{company}.json
+│       ├── fixed-costs-{company}.json
+│       └── indirect-costs-{company}.json
 │
-├── Financial-Data-Database.xlsx     # MASTER DATABASE
-│   ├── BVA_DATA                    # Monthly accumulated data
-│   └── BVA_CALC                    # YTD formulas
+├── Financial-Data-Database-Mantis.xlsx # Mantis master database
+│   ├── BVA_DATA                        # Monthly BVA data
+│   ├── BVA_CALC                        # YTD formulas
+│   ├── Revenue                         # Contract revenue line items
+│   ├── Variable Costs                  # Variable cost line items
+│   ├── Fixed Costs                     # Direct staff cost line items
+│   └── Indirect Costs                  # Indirect/admin cost line items
 │
-├── update-dashboard.bat             # ONE-CLICK UPDATE SCRIPT
+├── Financial-Data-Database-Mudin.xlsx  # Mudin master database (same structure)
+│
+├── update-dashboard.bat                # ONE-CLICK UPDATE SCRIPT
 ├── requirements.txt
-└── README.md                       # This file
+└── README.md
 ```
 
 ---
 
-## 🚀 Quick Start (For Finance Team)
+## Monthly Update Process
 
-### **Monthly Update Process:**
+### For each company, two types of source files go into `source-files/`:
 
-1. **Drop File**: Save new Excel file to `source-files/` folder
-2. **Run Script**: Double-click `update-dashboard.bat`
-3. **Wait**: ~1-2 minutes for processing
-4. **Done**: Refresh browser to see updated dashboard
+| File type | Example name | Pipeline triggered |
+|---|---|---|
+| Budget vs Actual | `Mantis Budget vs Actual File Feb 2026.xlsx` | Full BVA pipeline (6 steps) |
+| Financial Statement | `Mantis Financial Statement report - FEB 2026.xlsx` | Revenue extraction only |
 
-**That's it!** The script handles everything automatically.
+### Steps:
+1. Drop source Excel file(s) into `source-files/`
+2. Double-click `update-dashboard.bat`
+3. Wait ~1–2 minutes
+4. Refresh browser
 
-### **Accessing the Dashboard:**
-
-**Internal Server**: Navigate to your internal dashboard URL (e.g., `http://naresco-server/financial-dashboard`)
-
-**Local Testing**: Run `python -m http.server 8000` in the `dashboard/` folder, then open `http://localhost:8000`
-
----
-
-## 🏗️ How It Works (Dual-Path Validation)
-
-```
-Source Excel File (New Month)
-    ↓
-    ├─→ [PATH A: Excel Database - MASTER]
-    │   ├─ Extract to Financial-Data-Database.xlsx
-    │   ├─ BVA_DATA: Append new month
-    │   └─ BVA_CALC: Formulas auto-calculate YTD
-    │
-    └─→ [PATH B: JSON - VALIDATION]
-        ├─ Extract to raw-data.json
-        └─ Consolidate to calculations.json
-    
-    ↓
-[VALIDATION]
-Compare Excel vs JSON
-    ├─ ✅ Match → Proceed to dashboard
-    └─ ❌ Mismatch → STOP! Alert user
-    
-    ↓
-[DASHBOARD]
-Generate from Excel (validated source)
-    ↓
-Serve via internal web server
-```
-
-**Why Dual-Path?**
-- Excel = Master (auditable, human-readable)
-- JSON = Independent validation
-- If they don't match = Something is wrong, don't deploy!
-
-**Security:**
-- Data hosted internally on secure on-premises server
-- No external cloud dependencies
-- Full control over access and permissions
+The script auto-detects the company (from the filename) and the file type, then routes accordingly.
 
 ---
 
-## 📊 Data Flow
+## BVA Pipeline (Budget vs Actual files)
 
-### **Month 1 (February):**
 ```
-Feb Excel → update-dashboard.bat
+Source BVA Excel
     ↓
-BVA_DATA: 13 rows (Feb only)
-BVA_CALC: YTD for 1 month
-Dashboard: Shows Feb data
-```
-
-### **Month 2 (March):**
-```
-Mar Excel → update-dashboard.bat
+[Step 1] extract_to_excel_database.py   → Financial-Data-Database-{Company}.xlsx
+                                            BVA_DATA: append new month rows
+                                            BVA_CALC: SUMIF/AVERAGEIF formulas
     ↓
-BVA_DATA: 26 rows (Feb + Mar)  ← Accumulated!
-BVA_CALC: YTD for 2 months
-Dashboard: Shows Feb + Mar
-```
-
-### **Month 3 (April):**
-```
-Apr Excel → update-dashboard.bat
+[Step 2] extract_section_data.py        → DB sheets: Variable Costs, Fixed Costs, Indirect Costs
+                                            Extracts named line items with B/A/V per month
     ↓
-BVA_DATA: 39 rows (Feb + Mar + Apr)  ← Growing!
-BVA_CALC: YTD for 3 months
-Dashboard: Shows Feb + Mar + Apr
+[Step 3] extract_budget_data.py         → dashboard/data/raw-data-{company}.json
+    ↓
+[Step 4] consolidate_data.py            → dashboard/data/calculations-{company}.json
+                                            Absolute metrics: SUM
+                                            % metrics: derived from YTD numerator ÷ denominator
+                                            EBITDA: Net Surplus + Interest + Depreciation + Amortisation
+    ↓
+[Step 5] compare_calculations.py        → Validates Excel BVA_CALC vs Python calculations
+                                            Stops pipeline if mismatch detected
+    ↓
+[Step 6] generate_dashboard_from_excel.py → dashboard/data/dashboard-{company}.json
+                                            dashboard/data/revenue-{company}.json
+                                            dashboard/data/variable-costs-{company}.json
+                                            dashboard/data/fixed-costs-{company}.json
+                                            dashboard/data/indirect-costs-{company}.json
 ```
 
-**Data never gets lost - it accumulates over time!**
+### Financial Statement Pipeline
+
+```
+Source Financial Statement Excel
+    ↓
+extract_revenue_data.py → Revenue sheet in Financial-Data-Database-{Company}.xlsx
+                           Detects month columns dynamically
+                           Only adds months not already in database
+                           YTD Total column always kept rightmost
+```
 
 ---
 
-## 🔧 Technical Details
+## Dashboard Features
 
-### **Metrics Tracked (13 total):**
-- Total Revenue
-- Variable Cost + %
-- Contribution Margin + %
-- Fixed Costs (Direct) + %
-- Gross Profit/Loss + %
-- Fixed Costs (Indirect) + %
-- Net Profit/Loss + %
+### KPI Cards (top row)
+| Card | Primary display | Secondary |
+|---|---|---|
+| Total Revenue | AED value | Variance vs Budget |
+| Contribution Margin | % | AED value |
+| Gross Profit | % | AED value |
+| Net Profit | % | AED value |
+| EBITDA | % | AED value |
 
-### **Dashboard Features:**
-- **Interactive KPI Cards**: Click to jump to row in table
-- **Shorthand Number Formatting**: Fortune 500-style (AED 1.28M instead of AED 1,279,576)
-- **Budget vs Actual Chart**: Side-by-side comparison
-- **Variance Analysis Chart**: Performance gaps visualization
-- **Data Table**: All metrics with full precision and conditional formatting
-- **Admin Controls**: Custom formatting rules (saved per user in browser)
-- **Personalized Views**: Each user's browser stores their own settings
+### Charts
+- **Budget vs Actual**: Side-by-side bars for all 7 key metrics
+- **Variance Analysis**: Single bar per metric, green = favourable, red = unfavourable
+- Clicking any bar scrolls to and highlights the corresponding table row
 
-### **Number Formatting:**
-- **KPI Cards**: Shorthand format (up to 2 decimals, trailing zeros removed)
-  - Millions: AED 1.28M
-  - Thousands: AED 15.5K
-  - Small numbers: AED 250
-- **Detail Table**: Full precision (AED 1,279,576)
-- **Design Philosophy**: "Overview first, details on demand"
+### Data Table
+- All 13 metrics with Budget / Actual / Variance (YTD)
+- Eye icon on each row opens the line-item drill-down panel
+- Conditional formatting rules (set in Settings) persist per user per browser
 
-### **Tech Stack:**
-- **Python 3.8+**: pandas, openpyxl
-- **Excel**: Master database with formulas
-- **JavaScript**: Chart.js for visualizations
-- **Hosting**: Internal web server (IIS, Apache, nginx, or Python http.server)
-- **Version Control**: Git (optional)
+### Line-Item Drill-Down Panel
+Opens below the data table when eye icon is clicked.
+
+| Metric row | Detail panel shows |
+|---|---|
+| Total Revenue | Contract revenue by site (actuals only) |
+| Total Variable Cost | Material Cost - Projects (B/A/V) |
+| Total Staff Cost (Direct) | 12 staff cost lines (B/A/V) |
+| Total Fixed Cost (Indirect) | 33 indirect cost lines (B/A/V) |
+
+**Month selector**: Tick one or more months + Fetch to add columns. YTD Total always visible.
+
+**Zero-variance filter**: Cost sections automatically hide rows with zero variance (rows with no activity). Revenue shows all rows.
+
+**Inherited formatting**: Rules set on a parent metric (e.g. Indirect Costs variance < 0 → red) apply automatically to all child rows in the drill-down.
+
+### Variance Convention
+- **Revenue & profit metrics** (Revenue, CM, GP, Net Profit, EBITDA): Actual − Budget (positive = above budget = good)
+- **All cost metrics**: Budget − Actual (positive = underspend = good)
+
+This allows management to immediately spot unposted costs: a large positive variance on a cost line may indicate invoices not yet received.
 
 ---
 
-## 🛠️ Installation & Deployment
+## Metrics Tracked
 
-### **Prerequisites:**
-- Python 3.8+
-- Web server (IIS, Apache, nginx, or Python's built-in server)
+### BVA Metrics (16 + 2 derived)
+| Metric | Type |
+|---|---|
+| Total Revenue | SUM |
+| Total Variable Cost | SUM |
+| TVC % | DERIVED (TVC ÷ Revenue) |
+| Contribution Margin | SUM |
+| CM % | DERIVED (CM ÷ Revenue) |
+| Total Staff Cost (Direct) | SUM |
+| TSCD % | DERIVED (TSCD ÷ Revenue) |
+| Gross Profit / (Loss) | SUM |
+| GP % | DERIVED (GP ÷ Revenue) |
+| Total Fixed Cost (Indirect) | SUM |
+| TFCI % | DERIVED (TFCI ÷ Revenue) |
+| Net Surplus / (Deflect) | SUM |
+| NSD % | DERIVED (NSD ÷ Revenue) |
+| Interest Expenses | SUM |
+| Amortisation | SUM |
+| Depreciation | SUM |
+| EBITDA | DERIVED (Net Surplus + Interest + Amort + Deprec) |
+| EBITDA % | DERIVED (EBITDA ÷ Revenue) |
 
-### **Setup:**
+---
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+## Adding a New Section Drill-Down
+
+To add a new cost section (e.g. "Marketing Costs"):
+
+**1. `scripts/extract_section_data.py`** — add to `SECTIONS_CONFIG`:
+```python
+"Marketing Costs": {
+    "metrics": ["Row Label 1", "Row Label 2", ...],
+    "total_label": "TOTAL MARKETING COSTS",
+    "source_sheet": "Detail Budget"
+},
 ```
 
-### **Deployment Options:**
+**2. `scripts/generate_dashboard_from_excel.py`** — add to `SECTION_SHEETS`:
+```python
+"Marketing Costs": "marketing-costs",
+```
 
-#### **Option 1: Internal Web Server (Recommended)**
-Point your internal web server to the `dashboard/` folder:
+**3. `templates/dashboard_template.html`** — add to `DETAIL_METRICS`:
+```javascript
+'Metric Row Key': {type: 'section', slug: 'marketing-costs', label: 'Marketing Costs', filterZeroVariance: true},
+```
 
-**IIS (Windows Server):**
-1. Open IIS Manager
-2. Add new site pointing to `dashboard/` folder
-3. Set internal URL (e.g., `http://naresco-server/financial-dashboard`)
+Copy template to `dashboard/index.html`, run the pipeline. Done.
 
-**Apache/nginx:**
-Configure document root to `dashboard/` directory
+---
 
-**Python HTTP Server (Testing):**
+## Adding a New Company
+
+1. Add entry to `dashboard/data/companies.json`:
+```json
+{"id": "newco", "name": "New Company Name", "logo": "newco-logo.png"}
+```
+2. Place logo file in `dashboard/`
+3. Drop BVA and Financial Statement source files (with company name in filename) into `source-files/`
+4. Run `update-dashboard.bat`
+
+---
+
+## Tech Stack
+
+- **Python 3.8+**: openpyxl, pandas
+- **JavaScript**: Chart.js 4.4 for visualisations
+- **Storage**: Per-company Excel databases + generated JSON
+- **Hosting**: Internal web server (IIS recommended for production)
+- **Version Control**: Git / GitHub
+
+---
+
+## Local Testing
+
 ```bash
 cd dashboard
 python -m http.server 8000
-# Access at http://localhost:8000
+# Open http://localhost:8000
 ```
 
-#### **Option 2: Vercel (Cloud - Alternative)**
-```bash
-# One-time setup
-git clone https://github.com/charmenlondon-cmd/Naresco-Financial-Reporting.git
-cd Naresco-Financial-Reporting
-pip install -r requirements.txt
-
-# Deploy
-git add dashboard/index.html
-git commit -m "Update dashboard"
-git push
-# Vercel auto-deploys in ~30 seconds
-```
+The dashboard uses `fetch()` to load JSON data, so a local server is required (cannot open index.html directly as a file).
 
 ---
 
-## 📝 Manual Commands (Advanced)
+## Troubleshooting
 
-If you prefer manual control instead of using the batch script:
+**"No Excel files found"** — Ensure `.xlsx` file is in `source-files/` folder
 
-```bash
-# Step 1: Extract to Excel database
-python scripts/extract_to_excel_database.py --input "source-files/YourFile.xlsx"
+**"Validation failed"** — Check BVA_DATA and BVA_CALC sheets in the company database; verify source file structure matches expected format
 
-# Step 2: Extract to JSON (validation)
-python scripts/extract_budget_data.py --input "source-files/YourFile.xlsx"
-python scripts/consolidate_data.py
+**"Could not load data / No detail data found"** — Run the full update pipeline; JSON files are not committed to git and must be generated locally
 
-# Step 3: Validate
-python scripts/compare_calculations.py
+**"Permission denied on database"** — Close the Excel database file before running the pipeline
 
-# Step 4: Generate dashboard
-python scripts/generate_dashboard_from_excel.py
+**"Dashboard not updating"** — Hard refresh browser (Ctrl+F5); ensure the pipeline completed successfully
 
-# Step 5: Deploy (choose one)
-# Internal hosting: Dashboard files auto-update, just refresh browser
-# Vercel (optional): git add dashboard/index.html && git commit -m "Update" && git push
-```
+**"Admin settings disappeared"** — Settings are stored per browser. To transfer: copy `localStorage.getItem('formattingRules')` from browser console and paste on new browser with `localStorage.setItem(...)`
 
 ---
 
-## ✅ Validation Example
-
-### **When Excel and JSON Match (Good!):**
-```
-✅ VALIDATION PASSED!
-All calculations verified and matched!
-
-  ✓ Total Revenue                Excel=    20,000,000.00  JSON=    20,000,000.00  ✅
-  ✓ Total Variable Cost          Excel=    16,000,000.00  JSON=    16,000,000.00  ✅
-  ✓ Contribution Margin          Excel=     4,000,000.00  JSON=     4,000,000.00  ✅
-  ... (all 13 metrics checked)
-
-Proceeding with dashboard generation...
-```
-
-### **When They Don't Match (Problem!):**
-```
-❌ VALIDATION FAILED!
-
-  ❌ Total Variable Cost          MISMATCH:
-     Actual:   Excel=16,000,000  JSON=16,500,000  Diff=500,000
-
-Process STOPPED. Fix issues before deploying.
-```
-
----
-
-## 🔄 Workflow Automation (Planned - Phase 2)
-
-Currently manual (double-click batch file).
-
-**Future: n8n Integration**
-- Monitor `source-files/` folder automatically
-- Trigger batch script when new file detected
-- Send notifications on completion/errors
-
----
-
-## 📈 Roadmap
-
-**Phase 1 (Complete)**: Budget vs Actual Dashboard ✅
-- Dual-path validation system
-- Growing Excel database
-- Interactive web dashboard
-- One-click updates
-
-**Phase 2 (In Progress)**: P&L Dashboard 🔄
-- Profit & Loss analysis
-- Year-over-year comparison
-- Multi-period trending
-
-**Phase 3 (Planned)**: Additional Reports
-- Balance Sheet
-- Cash Flow
-- Multi-company support
-
----
-
-## 🐛 Troubleshooting
-
-**"No Excel files found"**
-- Ensure .xlsx file is in `source-files/` folder
-
-**"Validation failed"**
-- Check `Financial-Data-Database.xlsx` (BVA_DATA and BVA_CALC sheets)
-- Verify source Excel file structure matches expected format
-- Review validation output for specific mismatches
-
-**"Dashboard not updating"**
-- Refresh browser (Ctrl+F5 for hard refresh)
-- Check that web server is pointing to correct `dashboard/` folder
-- Verify `update-dashboard.bat` completed successfully
-
-**"Admin settings disappeared"**
-- Settings are stored per browser, per URL origin
-- Different browsers = different settings (this is normal)
-- Each user can customize their own view
-- To transfer settings: Use browser console to copy `localStorage.getItem('formattingRules')` and paste on new browser with `localStorage.setItem('formattingRules', 'PASTE_HERE')`
-
-**"Git push failed" (if using Vercel)**
-- Authenticate with GitHub
-- Run `git push` manually to set up credentials
-
----
-
-## 📞 Support
-
-For issues or questions, contact the Naresco Finance team.
-
----
-
-**Built for Naresco Finance | Powered by dual-path validation**
+*Built for Naresco Finance | Multi-company Budget vs Actual reporting*
