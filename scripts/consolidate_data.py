@@ -19,13 +19,15 @@ PERCENTAGE_METRICS = ["TVC %", "CM %", "TSCD %", "GP %", "TFCI %", "NSD %", "EBI
 # variance sign: 'cost' = Budget-Actual (positive=underspend=good)
 #                'profit' = Actual-Budget (positive=above budget=good)
 PCT_DERIVATIONS = {
-    "TVC %":  ("Total Variable Cost",        "Total Revenue", "cost"),
-    "CM %":   ("Contribution Margin",         "Total Revenue", "profit"),
-    "TSCD %": ("Total Staff Cost (Direct)",   "Total Revenue", "cost"),
-    "GP %":   ("Gross Profit / (Loss)",       "Total Revenue", "profit"),
-    "TFCI %": ("Total Fixed Cost (Indirect)", "Total Revenue", "cost"),
-    "NSD %":  ("Net Surplus / (Deflect)",     "Total Revenue", "profit"),
+    "TVC %":  ("Total Variable Cost",      "Total Revenue", "cost"),
+    "CM %":   ("Contribution Margin",       "Total Revenue", "profit"),
+    "TSCD %": ("Total Staff Cost (Direct)", "Total Revenue", "cost"),
+    "GP %":   ("Gross Profit / (Loss)",     "Total Revenue", "profit"),
+    "TFCI %": ("Adjusted Indirect Costs",   "Total Revenue", "cost"),   # uses adjusted (excl. TDI)
+    "NSD %":  ("Net Surplus / (Deflect)",   "Total Revenue", "profit"),
 }
+
+TDI_COMPONENTS = ["Interest Expenses", "Amortization", "Depreciation"]
 
 
 def load_raw_data(input_path):
@@ -75,8 +77,41 @@ def consolidate_metrics(raw_data):
         })
         print(f"  [SUM] {data_point}: Budget={ytd_budget:.2f}, Actual={ytd_actual:.2f}, Variance={ytd_variance:.2f}")
 
-    # Step 2: Derive percentage metrics from YTD absolutes
+    # Step 1b: Derive TDI and Adjusted Indirect Costs (needed before % derivation)
     abs_lookup = {r['DataPoint']: r for r in consolidated}
+
+    def _get(key, field):
+        m = abs_lookup.get(key)
+        return m[field] if m else 0.0
+
+    tdi_b = sum(_get(c, 'YTD_BUDGET')   for c in TDI_COMPONENTS)
+    tdi_a = sum(_get(c, 'YTD_ACTUAL')   for c in TDI_COMPONENTS)
+    tdi_v = sum(_get(c, 'YTD_VARIANCE') for c in TDI_COMPONENTS)
+
+    tdi_row = {
+        'DataPoint': 'TDI', 'DashboardName': 'Tax, Depreciation & Interest',
+        'YTD_BUDGET': tdi_b, 'YTD_ACTUAL': tdi_a, 'YTD_VARIANCE': tdi_v,
+        'AggregationMethod': 'DERIVED'
+    }
+    consolidated.append(tdi_row)
+    abs_lookup['TDI'] = tdi_row
+    print(f"  [DERIVED] TDI: Budget={tdi_b:.2f}, Actual={tdi_a:.2f}, Variance={tdi_v:.2f}")
+
+    adj_b = _get('Total Fixed Cost (Indirect)', 'YTD_BUDGET')   - tdi_b
+    adj_a = _get('Total Fixed Cost (Indirect)', 'YTD_ACTUAL')   - tdi_a
+    adj_v = _get('Total Fixed Cost (Indirect)', 'YTD_VARIANCE') - tdi_v
+
+    adj_row = {
+        'DataPoint': 'Adjusted Indirect Costs', 'DashboardName': 'Indirect Costs',
+        'YTD_BUDGET': adj_b, 'YTD_ACTUAL': adj_a, 'YTD_VARIANCE': adj_v,
+        'AggregationMethod': 'DERIVED'
+    }
+    consolidated.append(adj_row)
+    abs_lookup['Adjusted Indirect Costs'] = adj_row
+    print(f"  [DERIVED] Adjusted Indirect Costs: Budget={adj_b:.2f}, Actual={adj_a:.2f}, Variance={adj_v:.2f}")
+
+    # Step 2: Derive percentage metrics from YTD absolutes
+    # abs_lookup already populated above
 
     for pct_metric, (num_key, den_key, sign) in PCT_DERIVATIONS.items():
         if pct_metric not in grouped:

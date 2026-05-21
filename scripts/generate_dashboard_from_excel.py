@@ -136,9 +136,10 @@ def export_revenue_json(excel_path, output_path):
 
 
 SECTION_SHEETS = {
-    "Variable Costs": "variable-costs",
-    "Fixed Costs":    "fixed-costs",
-    "Indirect Costs": "indirect-costs",
+    "Variable Costs": {"slug": "variable-costs", "exclude": set()},
+    "Fixed Costs":    {"slug": "fixed-costs",    "exclude": set()},
+    "Indirect Costs": {"slug": "indirect-costs", "exclude": {"Interest Expenses", "Amortization", "Depreciation"}},
+    "TDI":            {"slug": "tdi",            "exclude": set()},
 }
 
 
@@ -154,7 +155,10 @@ def export_section_jsons(excel_path, company):
         print(f"  Could not open database for section export: {e}")
         return
 
-    for sheet_name, slug in SECTION_SHEETS.items():
+    for sheet_name, cfg in SECTION_SHEETS.items():
+        slug = cfg["slug"]
+        exclusions = cfg.get("exclude", set())
+
         if sheet_name not in wb.sheetnames:
             print(f"  No '{sheet_name}' sheet found — skipping")
             continue
@@ -182,7 +186,11 @@ def export_section_jsons(excel_path, company):
             desc = ws.cell(row, 1).value
             if not desc:
                 continue
-            row_data = {"description": str(desc).strip()}
+            desc_str = str(desc).strip()
+            # Skip rows excluded from this section's JSON export
+            if desc_str in exclusions:
+                continue
+            row_data = {"description": desc_str}
             col_offset = 2
             for label in months:
                 row_data[label] = {

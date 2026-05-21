@@ -587,7 +587,7 @@
             const btns = document.querySelectorAll('.company-btn');
             btns.forEach(b => { b.disabled = true; b.textContent = 'Loading...'; });
             try {
-                const res = await fetch(`data/dashboard-${companyId}.json`);
+                const res = await fetch(`data/dashboard-${companyId}.json?v=${Date.now()}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 dashboardData = await res.json();
                 sessionStorage.setItem('selectedCompany', companyId);
@@ -854,23 +854,19 @@
                 'Contribution Margin',
                 'Total Staff Cost (Direct)',
                 'Gross Profit / (Loss)',
-                'Total Fixed Cost (Indirect)',
+                'Adjusted Indirect Costs',
+                'TDI',
                 'Net Surplus / (Deflect)'
             ];
+            const chartLabelOverrides = {'TDI': 'TDI', 'Adjusted Indirect Costs': 'Indirect Costs'};
 
             // Apply dynamic labels based on ACTUAL values
             const labels = metrics.map(m => {
+                if (chartLabelOverrides[m]) return chartLabelOverrides[m];
                 if (!ytd[m]) return m;
                 const actual = ytd[m].actual;
-
-                // Dynamic labels for Profit/Loss metrics based on ACTUAL
-                if (m === 'Gross Profit / (Loss)') {
-                    return actual >= 0 ? 'Gross Profit' : 'Gross Loss';
-                }
-                if (m === 'Net Surplus / (Deflect)') {
-                    return actual >= 0 ? 'Net Profit' : 'Net Loss';
-                }
-
+                if (m === 'Gross Profit / (Loss)') return actual >= 0 ? 'Gross Profit' : 'Gross Loss';
+                if (m === 'Net Surplus / (Deflect)') return actual >= 0 ? 'Net Profit' : 'Net Loss';
                 return ytd[m].dashboard_name || m;
             });
 
@@ -900,14 +896,7 @@
                     maintainAspectRatio: false,
                     barPercentage: 0.55,
                     categoryPercentage: 0.65,
-                    onClick: function(event, elements) {
-                        if (elements.length > 0) {
-                            handleChartClick(metrics[elements[0].index]);
-                        }
-                    },
-                    onHover: function(event, elements) {
-                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-                    },
+                    ...makeChartHandlers(metrics),
                     plugins: {
                         legend: {
                             display: true,
@@ -986,24 +975,19 @@
                 'Contribution Margin',
                 'Total Staff Cost (Direct)',
                 'Gross Profit / (Loss)',
-                'Total Fixed Cost (Indirect)',
+                'Adjusted Indirect Costs',
+                'TDI',
                 'Net Surplus / (Deflect)'
             ];
+            const chartLabelOverrides = {'TDI': 'TDI', 'Adjusted Indirect Costs': 'Indirect Costs'};
 
             // Apply dynamic labels based on VARIANCE values (for variance chart)
             const labels = metrics.map(m => {
+                if (chartLabelOverrides[m]) return chartLabelOverrides[m];
                 if (!ytd[m]) return m;
-
                 const variance = ytd[m].variance;
-
-                // Dynamic labels for Profit/Loss metrics based on VARIANCE direction
-                if (m === 'Gross Profit / (Loss)') {
-                    return variance >= 0 ? 'Gross Profit' : 'Gross Loss';
-                }
-                if (m === 'Net Surplus / (Deflect)') {
-                    return variance >= 0 ? 'Net Profit' : 'Net Loss';
-                }
-
+                if (m === 'Gross Profit / (Loss)') return variance >= 0 ? 'Gross Profit' : 'Gross Loss';
+                if (m === 'Net Surplus / (Deflect)') return variance >= 0 ? 'Net Profit' : 'Net Loss';
                 return ytd[m].dashboard_name || m;
             });
             const variances = metrics.map(m => ytd[m]?.variance || 0);
@@ -1030,21 +1014,7 @@
                     maintainAspectRatio: false,
                     barPercentage: 0.55,
                     categoryPercentage: 0.65,
-                    onClick: function(event, elements, chart) {
-                        if (elements.length > 0) {
-                            handleChartClick(metrics[elements[0].index]);
-                        } else {
-                            // Allow clicking on x-axis labels when bar is too small to hit
-                            const xAxis = chart.scales.x;
-                            const idx = xAxis.getValueForPixel(event.x);
-                            if (idx !== undefined && idx >= 0 && idx < metrics.length) {
-                                handleChartClick(metrics[Math.round(idx)]);
-                            }
-                        }
-                    },
-                    onHover: function(event, elements) {
-                        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-                    },
+                    ...makeChartHandlers(metrics),
                     plugins: {
                         legend: {
                             display: false
@@ -1114,10 +1084,11 @@
         // value = data type used by the loader ('revenue' | 'section')
         // slug = filename slug for section types
         const DETAIL_METRICS = {
-            'Total Revenue':                  {type: 'revenue'},
-            'Total Variable Cost':            {type: 'section', slug: 'variable-costs', label: 'Variable Costs'},
-            'Total Staff Cost (Direct)':      {type: 'section', slug: 'fixed-costs',    label: 'Fixed Costs (Direct)',   filterZeroVariance: true},
-            'Total Fixed Cost (Indirect)':    {type: 'section', slug: 'indirect-costs', label: 'Indirect Costs',         filterZeroVariance: true},
+            'Total Revenue':          {type: 'revenue'},
+            'Total Variable Cost':    {type: 'section', slug: 'variable-costs', label: 'Variable Costs'},
+            'Total Staff Cost (Direct)':   {type: 'section', slug: 'fixed-costs',    label: 'Fixed Costs (Direct)',  filterZeroVariance: true},
+            'Adjusted Indirect Costs':     {type: 'section', slug: 'indirect-costs', label: 'Indirect Costs',        filterZeroVariance: true},
+            'TDI':                         {type: 'section', slug: 'tdi',            label: 'Tax, Depreciation & Interest', filterZeroVariance: true},
         };
 
         function generateDataTable() {
@@ -1134,8 +1105,11 @@
                 'TSCD %',
                 'Gross Profit / (Loss)',
                 'GP %',
-                'Total Fixed Cost (Indirect)',
+                'Adjusted Indirect Costs',
                 'TFCI %',
+                'EBITDA',
+                'EBITDA %',
+                'TDI',
                 'Net Surplus / (Deflect)',
                 'NSD %'
             ];
@@ -1412,6 +1386,47 @@
             highlightTableRow(metricKey);
         }
 
+        // Shared handlers — make label area hoverable (tooltip) and clickable
+        function makeChartHandlers(metrics) {
+            return {
+                onClick: function(event, elements, chart) {
+                    if (elements.length > 0) {
+                        handleChartClick(metrics[elements[0].index]);
+                        return;
+                    }
+                    // Click landed on label or empty space — find nearest category
+                    const xAxis = chart.scales.x;
+                    const idx = Math.round(xAxis.getValueForPixel(event.x));
+                    if (idx >= 0 && idx < metrics.length) {
+                        handleChartClick(metrics[idx]);
+                    }
+                },
+                onHover: function(event, elements, chart) {
+                    const xAxis = chart.scales.x;
+                    const idx = Math.round(xAxis.getValueForPixel(event.x));
+                    const overLabel = idx >= 0 && idx < metrics.length && event.y >= xAxis.top;
+
+                    if (elements.length > 0 || overLabel) {
+                        event.native.target.style.cursor = 'pointer';
+                        if (elements.length === 0 && overLabel) {
+                            // Activate tooltip on all datasets for this index
+                            chart.tooltip.setActiveElements(
+                                chart.data.datasets.map((_, di) => ({datasetIndex: di, index: idx})),
+                                {x: event.x, y: event.y}
+                            );
+                            chart.update('none');
+                        }
+                    } else {
+                        event.native.target.style.cursor = 'default';
+                        if (chart.tooltip._active && chart.tooltip._active.length > 0) {
+                            chart.tooltip.setActiveElements([], {});
+                            chart.update('none');
+                        }
+                    }
+                }
+            };
+        }
+
         // ── Detail Panel ──────────────────────────────────────────────
         let activeDetailMetric = null;
         let activeEyeBtn = null;
@@ -1450,7 +1465,7 @@
             const companyId = sessionStorage.getItem('selectedCompany');
             if (!detailDataCache.revenue) {
                 try {
-                    const res = await fetch(`data/revenue-${companyId}.json`);
+                    const res = await fetch(`data/revenue-${companyId}.json?v=${Date.now()}`);
                     if (!res.ok) throw new Error('not found');
                     detailDataCache.revenue = await res.json();
                 } catch(e) {
@@ -1486,7 +1501,7 @@
             const cacheKey = `section_${slug}`;
             if (!detailDataCache[cacheKey]) {
                 try {
-                    const res = await fetch(`data/${slug}-${companyId}.json`);
+                    const res = await fetch(`data/${slug}-${companyId}.json?v=${Date.now()}`);
                     if (!res.ok) throw new Error('not found');
                     detailDataCache[cacheKey] = await res.json();
                 } catch(e) {

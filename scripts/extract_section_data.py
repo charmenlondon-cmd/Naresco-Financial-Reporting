@@ -75,14 +75,20 @@ SECTIONS_CONFIG = {
             "Government & Municipality Charges",
             "Bank Charges",
             "Donation",
-            "Interest Expenses",
-            "Amortization",
-            "Depreciation",
             "Business Promotion Expense",
             "Advertising & Social Media Expenses",
             "Travelling & Transport - Marketing",
         ],
         "total_label": "TOTAL INDIRECT COSTS",
+        "source_sheet": "Detail Budget"
+    },
+    "TDI": {
+        "metrics": [
+            "Interest Expenses",
+            "Amortization",
+            "Depreciation",
+        ],
+        "total_label": "TOTAL TDI",
         "source_sheet": "Detail Budget"
     },
 }
@@ -301,35 +307,27 @@ def update_section_in_database(database_path, section_name, section_config, sour
         existing_months = []
         existing_rows = []
 
-    # Find new months
     new_months = [m for m in source_months if m not in existing_months]
-    if not new_months:
-        print(f"    No new months to add for '{section_name}'")
-        wb.close()
-        return
-
-    print(f"    Adding month(s): {new_months}")
-
     all_months = existing_months + new_months
 
-    # Merge existing rows with new source data
-    source_by_desc = {r["description"]: r for r in source_rows}
-    merged = {}
-    for row in existing_rows:
-        merged[row["description"]] = dict(row)
-    for desc, src in source_by_desc.items():
-        if desc not in merged:
-            merged[desc] = {"description": desc, **{m: {"budget":0.0,"actual":0.0,"variance":0.0} for m in existing_months}}
-        for label in new_months:
-            merged[desc][label] = src.get(label, {"budget":0.0,"actual":0.0,"variance":0.0})
+    if not new_months:
+        print(f"    No new months — rebuilding rows from current config")
+    else:
+        print(f"    Adding month(s): {new_months}")
 
-    # Ensure all existing rows have new month keys
-    for desc in merged:
-        for label in new_months:
-            if label not in merged[desc]:
-                merged[desc][label] = {"budget":0.0,"actual":0.0,"variance":0.0}
+    # Build lookup dicts
+    existing_by_desc = {r["description"]: r for r in existing_rows}
+    source_by_desc   = {r["description"]: r for r in source_rows}
 
-    all_rows = list(merged.values())
+    # Always build from CURRENT CONFIG metrics only — self-healing when config changes
+    all_rows = []
+    for metric in section_config["metrics"]:
+        row_data = {"description": metric}
+        for label in existing_months:
+            row_data[label] = existing_by_desc.get(metric, {}).get(label, {"budget":0.0,"actual":0.0,"variance":0.0})
+        for label in new_months:
+            row_data[label] = source_by_desc.get(metric, {}).get(label, {"budget":0.0,"actual":0.0,"variance":0.0})
+        all_rows.append(row_data)
     write_section_sheet(ws, all_months, all_rows, section_config["total_label"])
 
     wb.save(database_path)

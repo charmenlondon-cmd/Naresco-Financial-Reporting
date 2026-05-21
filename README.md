@@ -13,11 +13,14 @@ Finance team drops source Excel files → System processes and validates data �
 **Key Features:**
 - **Multi-Company**: Company selector on load; each company has its own isolated database
 - **5 KPI Cards**: Revenue, Contribution Margin %, Gross Profit %, Net Profit %, EBITDA %
+- **TDI Split**: Tax/Depreciation/Interest separated from Indirect Costs as its own P&L line
 - **Dual-Path Validation**: Excel + JSON must match before deploying
 - **Correct YTD Percentages**: Derived from YTD numerator ÷ denominator (not averaged monthly)
 - **Correct Variance Convention**: Revenue = Actual − Budget; Costs = Budget − Actual
 - **Line-Item Drill-Downs**: Click eye icon on any metric row to see underlying line items
 - **Conditional Formatting**: Rules set on parent metrics cascade to child drill-down rows
+- **Chart Interactivity**: Hover or click any bar OR its axis label to view values and navigate
+- **Always-Fresh Data**: Cache-busting on all JSON fetches — no stale data after pipeline runs
 - **Growing Database**: Data accumulates month-over-month per company
 - **Secure Hosting**: Data stays on-premises, never leaves internal network
 
@@ -66,7 +69,8 @@ Naresco-Financial-Reporting/
 │       ├── revenue-{company}.json      # Revenue line-item detail per company
 │       ├── variable-costs-{company}.json
 │       ├── fixed-costs-{company}.json
-│       └── indirect-costs-{company}.json
+│       ├── indirect-costs-{company}.json  # TDI rows excluded
+│       └── tdi-{company}.json             # Interest, Amortisation, Depreciation
 │
 ├── Financial-Data-Database-Mantis.xlsx # Mantis master database
 │   ├── BVA_DATA                        # Monthly BVA data
@@ -175,7 +179,8 @@ Opens below the data table when eye icon is clicked.
 | Total Revenue | Contract revenue by site (actuals only) |
 | Total Variable Cost | Material Cost - Projects (B/A/V) |
 | Total Staff Cost (Direct) | 12 staff cost lines (B/A/V) |
-| Total Fixed Cost (Indirect) | 33 indirect cost lines (B/A/V) |
+| Adjusted Indirect Costs | 30 indirect cost lines (B/A/V); TDI components excluded |
+| TDI | Interest Expenses, Amortisation, Depreciation (B/A/V) |
 
 **Month selector**: Tick one or more months + Fetch to add columns. YTD Total always visible.
 
@@ -183,37 +188,56 @@ Opens below the data table when eye icon is clicked.
 
 **Inherited formatting**: Rules set on a parent metric (e.g. Indirect Costs variance < 0 → red) apply automatically to all child rows in the drill-down.
 
+### P&L Flow (details table order)
+```
+Total Revenue
+− Variable Cost (TVC %)
+= Contribution Margin (CM %)
+− Fixed Costs Direct (TSCD %)
+= Gross Profit (GP %)
+− Adjusted Indirect Costs (TFCI %)   ← excludes TDI
+= EBITDA (EBITDA %)
+− TDI (Tax, Depreciation & Interest)
+= Net Surplus / Net Profit (NSD %)
+```
+
 ### Variance Convention
-- **Revenue & profit metrics** (Revenue, CM, GP, Net Profit, EBITDA): Actual − Budget (positive = above budget = good)
-- **All cost metrics**: Budget − Actual (positive = underspend = good)
+- **Revenue & profit metrics** (Revenue, CM, GP, EBITDA, Net Profit): Actual − Budget (positive = above budget = good)
+- **All cost metrics** (Variable, Staff, Indirect, TDI): Budget − Actual (positive = underspend = good)
 
 This allows management to immediately spot unposted costs: a large positive variance on a cost line may indicate invoices not yet received.
+
+### TDI Split
+Interest Expenses, Amortisation and Depreciation are extracted from Indirect Costs and shown as a separate line (TDI — Tax, Depreciation & Interest). This creates a clean EBITDA bridge:
+`EBITDA − TDI = Net Surplus`
 
 ---
 
 ## Metrics Tracked
 
-### BVA Metrics (16 + 2 derived)
-| Metric | Type |
-|---|---|
-| Total Revenue | SUM |
-| Total Variable Cost | SUM |
-| TVC % | DERIVED (TVC ÷ Revenue) |
-| Contribution Margin | SUM |
-| CM % | DERIVED (CM ÷ Revenue) |
-| Total Staff Cost (Direct) | SUM |
-| TSCD % | DERIVED (TSCD ÷ Revenue) |
-| Gross Profit / (Loss) | SUM |
-| GP % | DERIVED (GP ÷ Revenue) |
-| Total Fixed Cost (Indirect) | SUM |
-| TFCI % | DERIVED (TFCI ÷ Revenue) |
-| Net Surplus / (Deflect) | SUM |
-| NSD % | DERIVED (NSD ÷ Revenue) |
-| Interest Expenses | SUM |
-| Amortisation | SUM |
-| Depreciation | SUM |
-| EBITDA | DERIVED (Net Surplus + Interest + Amort + Deprec) |
-| EBITDA % | DERIVED (EBITDA ÷ Revenue) |
+### BVA Metrics (16 extracted + 4 derived = 20 total)
+| Metric | Type | Notes |
+|---|---|---|
+| Total Revenue | SUM | |
+| Total Variable Cost | SUM | |
+| TVC % | DERIVED | TVC ÷ Revenue |
+| Contribution Margin | SUM | |
+| CM % | DERIVED | CM ÷ Revenue |
+| Total Staff Cost (Direct) | SUM | |
+| TSCD % | DERIVED | TSCD ÷ Revenue |
+| Gross Profit / (Loss) | SUM | |
+| GP % | DERIVED | GP ÷ Revenue |
+| Total Fixed Cost (Indirect) | SUM | Kept for validation; not shown in main table |
+| Interest Expenses | SUM | Component of TDI |
+| Amortisation | SUM | Component of TDI |
+| Depreciation | SUM | Component of TDI |
+| TDI | DERIVED | Interest + Amort + Deprec |
+| Adjusted Indirect Costs | DERIVED | Total Indirect − TDI; shown as "Indirect Costs" |
+| TFCI % | DERIVED | Adjusted Indirect ÷ Revenue |
+| Net Surplus / (Deflect) | SUM | |
+| NSD % | DERIVED | NSD ÷ Revenue |
+| EBITDA | DERIVED | Net Surplus + Interest + Amort + Deprec |
+| EBITDA % | DERIVED | EBITDA ÷ Revenue |
 
 ---
 
@@ -238,6 +262,11 @@ To add a new cost section (e.g. "Marketing Costs"):
 **3. `templates/dashboard_template.html`** — add to `DETAIL_METRICS`:
 ```javascript
 'Metric Row Key': {type: 'section', slug: 'marketing-costs', label: 'Marketing Costs', filterZeroVariance: true},
+```
+
+**4. `scripts/generate_dashboard_from_excel.py`** — if any rows should be excluded from the JSON (e.g. they belong to another section), add to the `exclude` set in `SECTION_SHEETS`:
+```python
+"My Section": {"slug": "my-section", "exclude": {"Row to hide"}},
 ```
 
 Copy template to `dashboard/index.html`, run the pipeline. Done.
