@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget vs Actual Dashboard - Naresco Finance</title>
+    <title>Budget vs Actual Dashboard - AAAH Construction Division Finance</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -433,7 +433,7 @@
     <!-- Company Selector Overlay -->
     <div id="companySelector">
         <div class="company-selector-card">
-            <img src="naresco-logo.png" alt="Naresco Logo" style="height:70px; margin-bottom:24px;">
+            <img src="aaah-logo.png" alt="AAAH Logo" style="height:70px; margin-bottom:24px;">
             <h1 style="color:#1e3a8a; font-size:24px; font-weight:700; margin-bottom:8px;">Financial Dashboard</h1>
             <p style="color:#718096; margin-bottom:32px; font-size:15px;">Select a company to continue</p>
             <div id="companyBtns"><div style="color:#718096; padding:20px;">Loading...</div></div>
@@ -443,7 +443,7 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="naresco-logo.png" alt="Company Logo" class="header-logo" id="headerLogo">
+            <img src="" alt="Company Logo" class="header-logo" id="headerLogo" style="display:none;">
             <div class="header-content">
                 <button class="admin-toggle" onclick="toggleAdmin()">Settings</button>
                 <button class="change-company-btn" onclick="changeCompany()">&#8592; Companies</button>
@@ -542,7 +542,7 @@
 
         <!-- Footer -->
         <div class="footer">
-            <p>Naresco Finance &copy; 2026 | Automated Financial Reporting</p>
+            <p>AAAH Construction Division Finance &copy; 2026 | Automated Financial Reporting</p>
         </div>
     </div>
 
@@ -597,7 +597,10 @@
                 const label = document.getElementById('companyNameLabel');
                 if (label) label.textContent = companyName;
                 const logo = document.getElementById('headerLogo');
-                if (logo && companyLogo) logo.src = companyLogo;
+                if (logo) {
+                    if (companyLogo) { logo.src = companyLogo; logo.style.display = ''; }
+                    else { logo.src = ''; logo.style.display = 'none'; }
+                }
                 initializeDashboard();
             } catch(e) {
                 sessionStorage.removeItem('selectedCompany');
