@@ -98,6 +98,9 @@ if errorlevel 1 ( echo ERROR: Step 6 failed! & set /a FAILED+=1 & exit /b 1 )
 
 set /a PROCESSED+=1
 echo [OK] %COMPANY% BVA pipeline completed successfully.
+if not exist "source-files\archive" mkdir "source-files\archive"
+move "source-files\%FILENAME%" "source-files\archive\%FILENAME%" >nul
+echo [OK] Archived: %FILENAME%
 exit /b 0
 
 REM -----------------------------------------------
@@ -108,4 +111,7 @@ if errorlevel 1 ( echo ERROR: Revenue extraction failed! & set /a FAILED+=1 & ex
 
 set /a PROCESSED+=1
 echo [OK] %COMPANY% revenue extraction completed successfully.
+if not exist "source-files\archive" mkdir "source-files\archive"
+move "source-files\%FILENAME%" "source-files\archive\%FILENAME%" >nul
+echo [OK] Archived: %FILENAME%
 exit /b 0
