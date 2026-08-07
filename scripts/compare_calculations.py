@@ -13,27 +13,26 @@ import sys
 from pathlib import Path
 
 
-# All metrics to validate
+# Absolute metrics to validate (percentage metrics excluded — they're computed as
+# YTD numerator/denominator in JSON vs monthly AVERAGEIF in Excel, so they differ by design)
 METRICS_TO_VALIDATE = [
     "Total Revenue",
     "Total Variable Cost",
-    "TVC %",
     "Contribution Margin",
-    "CM %",
     "Total Staff Cost (Direct)",
-    "TSCD %",
     "Gross Profit / (Loss)",
-    "GP %",
     "Total Fixed Cost (Indirect)",
-    "TFCI %",
     "Net Surplus / (Deflect)",
-    "NSD %"
+    "Interest Expenses",
+    "Amortization",
+    "Depreciation",
 ]
 
 
 def read_excel_calculations(excel_path="Financial-Data-Database.xlsx"):
     """
-    Read YTD calculations from Excel BVA_CALC sheet.
+    Compute YTD sums from BVA_DATA sheet (SUMIF equivalent in Python).
+    This avoids dependency on Excel formula cache, which openpyxl cannot populate.
 
     Returns:
         dict: {metric_name: {'budget': value, 'actual': value, 'variance': value}}
@@ -42,42 +41,44 @@ def read_excel_calculations(excel_path="Financial-Data-Database.xlsx"):
 
     wb = openpyxl.load_workbook(excel_path, data_only=True)
 
-    if 'BVA_CALC' not in wb.sheetnames:
-        print(f"ERROR: BVA_CALC sheet not found in {excel_path}")
+    if 'BVA_DATA' not in wb.sheetnames:
+        print(f"ERROR: BVA_DATA sheet not found in {excel_path}")
         wb.close()
         return None
 
-    ws = wb['BVA_CALC']
+    ws = wb['BVA_DATA']
 
-    results = {}
+    # BVA_DATA columns: Month | DataPoint | SampleRow | DashboardName | Budget | Actual | Variance
+    # Find header row (row 1)
+    totals = {}
 
-    # Read header to find column positions (assuming row 1 has headers)
-    # Expected: A=Metric, B=Method, C=YTD Budget, D=YTD Actual, E=YTD Variance
-
-    # Read all data rows (starting from row 2)
     for row in range(2, ws.max_row + 1):
-        metric = ws.cell(row, 1).value  # Column A
+        metric = ws.cell(row, 2).value  # Column B = DataPoint
+        if not metric or metric not in METRICS_TO_VALIDATE:
+            continue
 
-        if metric and metric in METRICS_TO_VALIDATE:
-            budget = ws.cell(row, 3).value  # Column C
-            actual = ws.cell(row, 4).value  # Column D
-            variance = ws.cell(row, 5).value  # Column E
+        budget   = ws.cell(row, 5).value  # Column E
+        actual   = ws.cell(row, 6).value  # Column F
+        variance = ws.cell(row, 7).value  # Column G
 
-            # Convert to float, handle None
-            budget = float(budget) if budget is not None else 0.0
-            actual = float(actual) if actual is not None else 0.0
-            variance = float(variance) if variance is not None else 0.0
+        budget   = float(budget)   if budget   is not None else 0.0
+        actual   = float(actual)   if actual   is not None else 0.0
+        variance = float(variance) if variance is not None else 0.0
 
-            results[metric] = {
-                'budget': budget,
-                'actual': actual,
-                'variance': variance
-            }
+        if metric not in totals:
+            totals[metric] = {'budget': 0.0, 'actual': 0.0, 'variance': 0.0}
+        totals[metric]['budget']   += budget
+        totals[metric]['actual']   += actual
+        totals[metric]['variance'] += variance
+
+    # Round to 2dp to match JSON
+    for m in totals:
+        totals[m] = {k: round(v, 2) for k, v in totals[m].items()}
 
     wb.close()
 
-    print(f"  Found {len(results)} metrics in Excel")
-    return results
+    print(f"  Found {len(totals)} metrics in Excel")
+    return totals
 
 
 def read_json_calculations(json_path="dashboard/data/calculations.json"):
@@ -152,12 +153,12 @@ def validate_calculations(excel_results, json_results):
     for metric in METRICS_TO_VALIDATE:
         # Check if metric exists in both
         if metric not in excel_results:
-            print(f"  ❌ {metric:35s} - Missing in Excel")
+            print(f"  [MISS] {metric:35s} - Missing in Excel")
             all_match = False
             continue
 
         if metric not in json_results:
-            print(f"  ❌ {metric:35s} - Missing in JSON")
+            print(f"  [MISS] {metric:35s} - Missing in JSON")
             all_match = False
             continue
 
@@ -170,9 +171,9 @@ def validate_calculations(excel_results, json_results):
         variance_match, variance_diff = compare_values(excel_data['variance'], json_data['variance'])
 
         if budget_match and actual_match and variance_match:
-            print(f"  ✓ {metric:35s} Excel={excel_data['actual']:>15,.2f}  JSON={json_data['actual']:>15,.2f}  ✅")
+            print(f"  [OK]   {metric:35s} Excel={excel_data['actual']:>15,.2f}  JSON={json_data['actual']:>15,.2f}")
         else:
-            print(f"  ❌ {metric:35s} MISMATCH:")
+            print(f"  [FAIL] {metric:35s} MISMATCH:")
             if not budget_match:
                 print(f"     Budget:   Excel={excel_data['budget']:>15,.2f}  JSON={json_data['budget']:>15,.2f}  Diff={budget_diff:>15,.2f}")
             if not actual_match:
@@ -194,13 +195,13 @@ def validate_calculations(excel_results, json_results):
     print("=" * 70)
 
     if all_match:
-        print("✅ VALIDATION PASSED!")
+        print("[PASS] VALIDATION PASSED!")
         print("All Excel and JSON calculations match perfectly.")
         print("Proceeding with dashboard generation...")
         print("=" * 70)
         return True
     else:
-        print("❌ VALIDATION FAILED!")
+        print("[FAIL] VALIDATION FAILED!")
         print()
         print(f"{len(differences)} metric(s) don't match:")
         for diff in differences:

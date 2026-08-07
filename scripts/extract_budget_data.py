@@ -57,16 +57,27 @@ DASHBOARD_NAMES = {
     "Depreciation": "Depreciation",
 }
 
+def load_company_labels(company):
+    config_path = Path(__file__).parent.parent / "config" / "company_labels.json"
+    if not config_path.exists():
+        return {}
+    with open(config_path) as f:
+        all_configs = json.load(f)
+    return all_configs.get(company, all_configs.get("default", {}))
+
+
 MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
 ]
 
+_MONTH_NAMES_LOWER = frozenset(m.lower() for m in MONTH_NAMES)
+
 
 def detect_column_structure(ws):
     """
     Dynamically detect Budget/Actual/Variance column positions for each month.
-    Scans rows 1-25 to find the Budget header row, then maps column groups.
+    Skips YTD/Total summary columns by checking the month label row.
     Returns list of (month_num, budget_col, actual_col, variance_col).
     """
     header_row = None
@@ -82,6 +93,17 @@ def detect_column_structure(ws):
     if not header_row:
         raise ValueError("No 'Budget' header row found in first 25 rows. Check file structure.")
 
+    # Find the row that contains real month names (scan upward from header_row)
+    label_row = None
+    for row in range(header_row - 1, 0, -1):
+        for col in range(1, min(ws.max_column + 1, 20)):
+            v = ws.cell(row, col).value
+            if v and str(v).strip().lower() in _MONTH_NAMES_LOWER:
+                label_row = row
+                break
+        if label_row:
+            break
+
     months = []
     month_num = 0
 
@@ -89,6 +111,19 @@ def detect_column_structure(ws):
         v = ws.cell(header_row, col).value
         if not v or str(v).strip().lower() != "budget":
             continue
+
+        # Skip Total/YTD columns: check that label row has a real month name at or just before this column
+        if label_row is not None:
+            lv_exact = ws.cell(label_row, col).value
+            lv_prev = ws.cell(label_row, col - 1).value if col > 1 else None
+            lv_exact_str = str(lv_exact).strip().lower() if lv_exact else ""
+            lv_prev_str = str(lv_prev).strip().lower() if lv_prev else ""
+            if lv_exact_str in _MONTH_NAMES_LOWER:
+                pass  # Real month at exact col — include
+            elif not lv_exact_str and lv_prev_str in _MONTH_NAMES_LOWER:
+                pass  # Empty at exact col, real month at col-1 (merged cell) — include
+            else:
+                continue  # Non-month or YTD/Total label — skip
 
         budget_col = col
         actual_col = None
@@ -99,9 +134,10 @@ def detect_column_structure(ws):
             if av is None:
                 continue
             av_str = str(av).strip().lower()
-            if "actual" in av_str and actual_col is None:
+            # Tolerant prefix matching for typos like "Acutal" / "Varaince"
+            if av_str[:2] == "ac" and actual_col is None:
                 actual_col = ahead
-            elif "variance" in av_str and actual_col is not None:
+            elif av_str[:3] == "var" and actual_col is not None:
                 variance_col = ahead
                 break
             elif av_str == "budget":
@@ -129,25 +165,17 @@ def detect_month_from_columns(ws, budget_header_row=11):
 
 
 def find_metric_row(ws, metric_name, search_col=1, max_row=150):
-    """
-    Find the row number where a metric name appears.
-
-    Args:
-        ws: openpyxl worksheet
-        metric_name: Name of metric to find
-        search_col: Column to search in (default 1 = column A)
-        max_row: Maximum row to search
-
-    Returns:
-        int: Row number, or None if not found
-    """
+    """Find the row number where a metric name appears. Exact match takes priority over startswith."""
+    first_startswith = None
     for row in range(1, max_row + 1):
         cell_value = ws.cell(row, search_col).value
         if cell_value:
             cell_str = str(cell_value).strip()
-            if cell_str == metric_name or cell_str.startswith(metric_name):
+            if cell_str == metric_name:
                 return row
-    return None
+            if first_startswith is None and cell_str.startswith(metric_name):
+                first_startswith = row
+    return first_startswith
 
 
 def extract_metric_data(ws, metric_name, row_num, month_number, col_structure=None):
@@ -207,7 +235,7 @@ def extract_metric_data(ws, metric_name, row_num, month_number, col_structure=No
     }
 
 
-def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_months=True):
+def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_months=True, company="default"):
     """
     Extract all metrics from the Excel file.
 
@@ -215,6 +243,7 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
         file_path: Path to Excel file
         sheet_name: Name of sheet to extract from
         extract_all_months: If True, extract all months; if False, only extract last month
+        company: Company ID for label overrides
 
     Returns:
         list: List of metric dictionaries in RAW DATA format
@@ -233,6 +262,13 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
     last_month_name = MONTH_NAMES[total_months - 1]
     print(f"Detected {total_months} month(s) of data (last month: {last_month_name})")
 
+    # Build company-specific label lookup: standard_key -> search_label
+    company_config = load_company_labels(company)
+    label_overrides = company_config.get("bva_row_labels", {})
+    label_col = company_config.get("label_col", 1)
+    # search_labels[standard_key] = label to search for in file (None = derived)
+    search_labels = {m: label_overrides.get(m, m) for m in METRIC_NAMES}
+
     # Determine which months to extract
     if extract_all_months:
         months_to_extract = range(1, total_months + 1)
@@ -242,6 +278,7 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
         print(f"Extracting only last month: {last_month_name}")
 
     extracted_data = []
+    monthly_extracted = {}
 
     # Extract each month
     for month_number in months_to_extract:
@@ -250,21 +287,33 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
 
         # Extract each metric for this month
         for metric_name in METRIC_NAMES:
-            print(f"  Searching for metric: {metric_name}")
+            search_label = search_labels[metric_name]
 
-            # Find the metric row
-            row_num = find_metric_row(ws, metric_name)
+            # Skip derived metrics (search_label is None)
+            if search_label is None:
+                print(f"  Skipping derived metric: {metric_name}")
+                continue
+
+            print(f"  Searching for metric: {metric_name} (label: '{search_label}')")
+
+            # Find the metric row using the company-specific label
+            row_num = find_metric_row(ws, search_label, search_col=label_col)
 
             if row_num is None:
-                print(f"    WARNING: Metric '{metric_name}' not found. Skipping.")
+                print(f"    WARNING: Metric '{search_label}' not found. Skipping.")
                 continue
 
             print(f"    [OK] Found at row {row_num}")
 
             # Extract the metric data for this specific month
-            data = extract_metric_data(ws, metric_name, row_num, month_number, col_structure)
+            data = extract_metric_data(ws, search_label, row_num, month_number, col_structure)
 
-            # Add to results
+            # Track for derived metric computation (always keyed by standard name)
+            if month_name not in monthly_extracted:
+                monthly_extracted[month_name] = {}
+            monthly_extracted[month_name][metric_name] = data
+
+            # Add to results — always store standard key as DataPoint
             extracted_data.append({
                 "Month": month_name,
                 "DataPoint": metric_name,
@@ -284,7 +333,7 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
                     print(f"    [OK] Found percentage at row {percentage_row}")
 
                     # Extract percentage data
-                    pct_data = extract_metric_data(ws, f"{metric_name} %", percentage_row, month_number, col_structure)
+                    pct_data = extract_metric_data(ws, f"{search_label} %", percentage_row, month_number, col_structure)
                     pct_abbrev = PERCENTAGE_ABBREVIATIONS[metric_name]
 
                     extracted_data.append({
@@ -294,6 +343,48 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
                         "Budget": pct_data["budget"],
                         "Actual": pct_data["actual"],
                         "Variance": pct_data["variance"]
+                    })
+
+    # Second pass: compute derived metrics (e.g. Gross Profit when not in source file)
+    for month_number in (months_to_extract if not isinstance(months_to_extract, range) else list(months_to_extract)):
+        month_name = MONTH_NAMES[month_number - 1]
+        mv = monthly_extracted.get(month_name, {})
+        for metric_name in METRIC_NAMES:
+            if search_labels[metric_name] is not None:
+                continue
+            if metric_name == "Gross Profit / (Loss)":
+                cm = mv.get("Contribution Margin")
+                sc = mv.get("Total Staff Cost (Direct)")
+                if not cm or not sc:
+                    print(f"    WARNING: Cannot derive '{metric_name}' — missing CM or Staff Cost data")
+                    continue
+                gp_b = round(cm['budget'] - sc['budget'], 2)
+                gp_a = round(cm['actual'] - sc['actual'], 2)
+                gp_v = round(gp_a - gp_b, 2)
+                extracted_data.append({
+                    "Month": month_name,
+                    "DataPoint": metric_name,
+                    "DashboardName": DASHBOARD_NAMES.get(metric_name, metric_name),
+                    "Budget": gp_b,
+                    "Actual": gp_a,
+                    "Variance": gp_v
+                })
+                print(f"    [DERIVED] '{metric_name}' = CM - Staff Cost")
+                # Derive GP %
+                if metric_name in PERCENTAGE_ABBREVIATIONS:
+                    rev = mv.get("Total Revenue")
+                    rev_b = rev['budget'] if rev and rev['budget'] else 0
+                    rev_a = rev['actual'] if rev and rev['actual'] else 0
+                    gp_pct_b = round(gp_b / rev_b, 6) if rev_b else 0.0
+                    gp_pct_a = round(gp_a / rev_a, 6) if rev_a else 0.0
+                    pct_abbrev = PERCENTAGE_ABBREVIATIONS[metric_name]
+                    extracted_data.append({
+                        "Month": month_name,
+                        "DataPoint": pct_abbrev,
+                        "DashboardName": DASHBOARD_NAMES.get(pct_abbrev, pct_abbrev),
+                        "Budget": gp_pct_b,
+                        "Actual": gp_pct_a,
+                        "Variance": round(gp_pct_a - gp_pct_b, 6)
                     })
 
     wb.close()
@@ -367,11 +458,17 @@ def main():
     print("="*60)
 
     try:
+        # Use company-specific source sheet if configured
+        company_config = load_company_labels(args.company)
+        sheet_to_use = company_config.get("source_sheet", args.sheet)
+        if sheet_to_use != args.sheet:
+            print(f"Using company-configured source sheet: {sheet_to_use}")
+
         # Determine extraction mode
         extract_all = not args.last_month_only
 
         # Extract data
-        data = extract_all_metrics(args.input, args.sheet, extract_all_months=extract_all)
+        data = extract_all_metrics(args.input, sheet_to_use, extract_all_months=extract_all, company=args.company)
 
         # Save to JSON
         save_to_json(data, args.output)

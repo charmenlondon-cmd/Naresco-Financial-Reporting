@@ -12,6 +12,8 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 import argparse
 from pathlib import Path
 from datetime import datetime
+import json
+import copy
 
 
 # Metric configurations (from sample dashboard)
@@ -80,16 +82,28 @@ METRICS_CONFIG = {
     },
 }
 
+def load_company_labels(company):
+    config_path = Path(__file__).parent.parent / "config" / "company_labels.json"
+    if not config_path.exists():
+        return {}
+    with open(config_path) as f:
+        all_configs = json.load(f)
+    return all_configs.get(company, all_configs.get("default", {}))
+
+
 MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
 ]
 
 
+_MONTH_NAMES_LOWER = frozenset(m.lower() for m in MONTH_NAMES)
+
+
 def detect_column_structure(ws):
     """
     Dynamically detect Budget/Actual/Variance column positions for each month.
-    Scans rows 1-25 to find the Budget header row, then maps column groups.
+    Skips YTD/Total summary columns by checking the month label row.
     Returns list of (month_num, budget_col, actual_col, variance_col).
     """
     header_row = None
@@ -105,6 +119,17 @@ def detect_column_structure(ws):
     if not header_row:
         raise ValueError("No 'Budget' header row found in first 25 rows. Check file structure.")
 
+    # Find the row that contains real month names (scan upward from header_row)
+    label_row = None
+    for row in range(header_row - 1, 0, -1):
+        for col in range(1, min(ws.max_column + 1, 20)):
+            v = ws.cell(row, col).value
+            if v and str(v).strip().lower() in _MONTH_NAMES_LOWER:
+                label_row = row
+                break
+        if label_row:
+            break
+
     months = []
     month_num = 0
 
@@ -112,6 +137,21 @@ def detect_column_structure(ws):
         v = ws.cell(header_row, col).value
         if not v or str(v).strip().lower() != "budget":
             continue
+
+        # Skip Total/YTD columns: check that the label row has a real month name at this
+        # budget column (or 1 col to the left, to handle merged-cell label offsets).
+        # Non-month labels (e.g. "Total", "JAN-MAR") cause the group to be skipped.
+        if label_row is not None:
+            lv_exact = ws.cell(label_row, col).value
+            lv_prev = ws.cell(label_row, col - 1).value if col > 1 else None
+            lv_exact_str = str(lv_exact).strip().lower() if lv_exact else ""
+            lv_prev_str = str(lv_prev).strip().lower() if lv_prev else ""
+            if lv_exact_str in _MONTH_NAMES_LOWER:
+                pass  # Real month at exact col — include
+            elif not lv_exact_str and lv_prev_str in _MONTH_NAMES_LOWER:
+                pass  # Empty at exact col, real month at col-1 (merged cell offset) — include
+            else:
+                continue  # Non-month or YTD/Total label — skip
 
         budget_col = col
         actual_col = None
@@ -122,9 +162,10 @@ def detect_column_structure(ws):
             if av is None:
                 continue
             av_str = str(av).strip().lower()
-            if "actual" in av_str and actual_col is None:
+            # Tolerant prefix matching for typos like "Acutal" / "Varaince"
+            if av_str[:2] == "ac" and actual_col is None:
                 actual_col = ahead
-            elif "variance" in av_str and actual_col is not None:
+            elif av_str[:3] == "var" and actual_col is not None:
                 variance_col = ahead
                 break
             elif av_str == "budget":
@@ -147,14 +188,17 @@ def detect_months_in_file(ws, budget_header_row=11):
 
 
 def find_metric_row(ws, metric_name, search_col=1, max_row=150):
-    """Find row number for a metric name."""
+    """Find row number for a metric name. Exact match takes priority over startswith."""
+    first_startswith = None
     for row in range(1, max_row + 1):
         cell_value = ws.cell(row, search_col).value
         if cell_value:
             cell_str = str(cell_value).strip()
-            if cell_str == metric_name or cell_str.startswith(metric_name):
+            if cell_str == metric_name:
                 return row
-    return None
+            if first_startswith is None and cell_str.startswith(metric_name):
+                first_startswith = row
+    return first_startswith
 
 
 def extract_metric_value(ws, row_num, col):
@@ -170,12 +214,22 @@ def extract_metric_value(ws, row_num, col):
         return 0.0
 
 
-def extract_from_source(file_path, sheet_name="Detail Budget"):
+def extract_from_source(file_path, sheet_name="Detail Budget", company="default"):
     """
     Extract all data from source Excel file.
     Returns DataFrame ready to append to BVA_DATA sheet.
     """
     print(f"Loading source file: {file_path}")
+
+    # Load company-specific label overrides
+    company_config = load_company_labels(company)
+    label_overrides = company_config.get("bva_row_labels", {})
+    label_col = company_config.get("label_col", 1)
+    metrics_config = copy.deepcopy(METRICS_CONFIG)
+    for metric_key, company_label in label_overrides.items():
+        if metric_key in metrics_config:
+            metrics_config[metric_key]["row_name"] = company_label  # None = derived
+
     wb = openpyxl.load_workbook(file_path, data_only=True)
 
     if sheet_name not in wb.sheetnames:
@@ -190,13 +244,18 @@ def extract_from_source(file_path, sheet_name="Detail Budget"):
 
     # Extract data for all months
     records = []
+    monthly_extracted = {}
 
     for month_num in range(1, total_months + 1):
         month_name = MONTH_NAMES[month_num - 1]
         print(f"  Extracting {month_name}...")
 
-        for metric_key, config in METRICS_CONFIG.items():
-            row_num = find_metric_row(ws, config["row_name"])
+        for metric_key, config in metrics_config.items():
+            # Skip derived metrics (row_name is None)
+            if config["row_name"] is None:
+                continue
+
+            row_num = find_metric_row(ws, config["row_name"], search_col=label_col)
 
             if row_num is None:
                 print(f"    WARNING: '{config['row_name']}' not found")
@@ -210,6 +269,11 @@ def extract_from_source(file_path, sheet_name="Detail Budget"):
             budget = extract_metric_value(ws, row_num, budget_col)
             actual = extract_metric_value(ws, row_num, actual_col)
             variance = extract_metric_value(ws, row_num, variance_col)
+
+            # Track extracted values for derived metric computation
+            if month_name not in monthly_extracted:
+                monthly_extracted[month_name] = {}
+            monthly_extracted[month_name][metric_key] = {'budget': budget, 'actual': actual, 'variance': variance}
 
             # Add main metric
             records.append({
@@ -239,6 +303,43 @@ def extract_from_source(file_path, sheet_name="Detail Budget"):
                     'Variance': pct_variance
                 })
 
+    # Second pass: compute derived metrics (e.g. Gross Profit when not in source file)
+    for month_num in range(1, total_months + 1):
+        month_name = MONTH_NAMES[month_num - 1]
+        mv = monthly_extracted.get(month_name, {})
+        for metric_key, config in metrics_config.items():
+            if config["row_name"] is not None:
+                continue
+            if metric_key == "Gross Profit / (Loss)":
+                cm = mv.get("Contribution Margin")
+                sc = mv.get("Total Staff Cost (Direct)")
+                if not cm or not sc:
+                    print(f"    WARNING: Cannot derive '{metric_key}' — missing CM or Staff Cost data")
+                    continue
+                gp_b = round(cm['budget'] - sc['budget'], 2)
+                gp_a = round(cm['actual'] - sc['actual'], 2)
+                gp_v = round(gp_a - gp_b, 2)
+                records.append({
+                    'Month': month_name, 'DataPoint': metric_key,
+                    'Sample Data ROW Number': 0,
+                    'DashboardName': config['dashboard_name'],
+                    'Budget': gp_b, 'Actual': gp_a, 'Variance': gp_v
+                })
+                print(f"    [DERIVED] '{metric_key}' = CM - Staff Cost")
+                if config.get('has_percentage'):
+                    rev = mv.get("Total Revenue")
+                    rev_b = rev['budget'] if rev and rev['budget'] else 0
+                    rev_a = rev['actual'] if rev and rev['actual'] else 0
+                    gp_pct_b = round(gp_b / rev_b, 6) if rev_b else 0.0
+                    gp_pct_a = round(gp_a / rev_a, 6) if rev_a else 0.0
+                    records.append({
+                        'Month': month_name, 'DataPoint': config['percentage_abbrev'],
+                        'Sample Data ROW Number': 0,
+                        'DashboardName': config['percentage_dashboard'],
+                        'Budget': gp_pct_b, 'Actual': gp_pct_a,
+                        'Variance': round(gp_pct_a - gp_pct_b, 6)
+                    })
+
     wb.close()
 
     df = pd.DataFrame(records)
@@ -251,6 +352,7 @@ def append_to_database(df, database_path):
     """
     Append extracted data to Excel database BVA_DATA sheet.
     Creates database if it doesn't exist.
+    Skips any months already present in the database to prevent duplication.
     """
     database_path = Path(database_path)
 
@@ -262,6 +364,22 @@ def append_to_database(df, database_path):
         # Get or create BVA_DATA sheet
         if 'BVA_DATA' in wb.sheetnames:
             ws = wb['BVA_DATA']
+            # Find which months already exist
+            existing_months = set()
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0]:
+                    existing_months.add(row[0])
+            if existing_months:
+                new_months = set(df['Month'].unique()) - existing_months
+                skipped = set(df['Month'].unique()) & existing_months
+                if skipped:
+                    print(f"[SKIP] Months already in database (skipping): {', '.join(sorted(skipped))}")
+                if not new_months:
+                    print("[OK] No new months to add — database already up to date.")
+                    wb.close()
+                    return
+                df = df[df['Month'].isin(new_months)]
+                print(f"[OK] New months to add: {', '.join(sorted(new_months))}")
             start_row = ws.max_row + 1
         else:
             ws = wb.create_sheet('BVA_DATA', 0)
@@ -396,8 +514,14 @@ def main():
     print("="*60)
 
     try:
+        # Use company-specific source sheet if configured
+        company_config = load_company_labels(args.company)
+        sheet_to_use = company_config.get("source_sheet", args.sheet)
+        if sheet_to_use != args.sheet:
+            print(f"Using company-configured source sheet: {sheet_to_use}")
+
         # Extract from source
-        df = extract_from_source(args.input, args.sheet)
+        df = extract_from_source(args.input, sheet_to_use, company=args.company)
 
         # Append to database
         append_to_database(df, args.database)

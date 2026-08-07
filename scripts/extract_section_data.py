@@ -12,6 +12,7 @@ DB sheet structure per section:
 import openpyxl
 from openpyxl import load_workbook, Workbook
 import argparse
+import json
 from pathlib import Path
 from datetime import datetime
 
@@ -94,9 +95,24 @@ SECTIONS_CONFIG = {
 }
 
 
+def load_company_sections(company):
+    config_path = Path(__file__).parent.parent / "config" / "company_labels.json"
+    if not config_path.exists():
+        return SECTIONS_CONFIG
+    with open(config_path) as f:
+        all_configs = json.load(f)
+    company_config = all_configs.get(company, {})
+    sections = company_config.get("sections", {})
+    return sections if sections else SECTIONS_CONFIG
+
+
+_MONTH_NAMES_LOWER = frozenset(m.lower() for m in MONTH_NAMES)
+
+
 def detect_column_structure(ws):
     """
     Dynamically detect Budget/Actual/Variance column positions for each month.
+    Skips YTD/Total summary columns by checking the month label row.
     Returns list of (month_num, month_label, budget_col, actual_col, variance_col).
     """
     header_row = None
@@ -112,6 +128,17 @@ def detect_column_structure(ws):
     if not header_row:
         raise ValueError("No 'Budget' header row found in first 25 rows.")
 
+    # Find the row that contains real month names (scan upward from header_row)
+    label_row = None
+    for row in range(header_row - 1, 0, -1):
+        for col in range(1, min(ws.max_column + 1, 20)):
+            v = ws.cell(row, col).value
+            if v and str(v).strip().lower() in _MONTH_NAMES_LOWER:
+                label_row = row
+                break
+        if label_row:
+            break
+
     months = []
     month_num = 0
 
@@ -119,6 +146,19 @@ def detect_column_structure(ws):
         v = ws.cell(header_row, col).value
         if not v or str(v).strip().lower() != "budget":
             continue
+
+        # Skip Total/YTD columns: check that label row has a real month name at or just before this column
+        if label_row is not None:
+            lv_exact = ws.cell(label_row, col).value
+            lv_prev = ws.cell(label_row, col - 1).value if col > 1 else None
+            lv_exact_str = str(lv_exact).strip().lower() if lv_exact else ""
+            lv_prev_str = str(lv_prev).strip().lower() if lv_prev else ""
+            if lv_exact_str in _MONTH_NAMES_LOWER:
+                pass  # Real month at exact col — include
+            elif not lv_exact_str and lv_prev_str in _MONTH_NAMES_LOWER:
+                pass  # Empty at exact col, real month at col-1 (merged cell) — include
+            else:
+                continue  # Non-month or YTD/Total label — skip
 
         budget_col = col
         actual_col = None
@@ -129,9 +169,10 @@ def detect_column_structure(ws):
             if av is None:
                 continue
             av_str = str(av).strip().lower()
-            if "actual" in av_str and actual_col is None:
+            # Tolerant prefix matching for typos like "Acutal" / "Varaince"
+            if av_str[:2] == "ac" and actual_col is None:
                 actual_col = ahead
-            elif "variance" in av_str and actual_col is not None:
+            elif av_str[:3] == "var" and actual_col is not None:
                 variance_col = ahead
                 break
             elif av_str == "budget":
@@ -146,14 +187,17 @@ def detect_column_structure(ws):
 
 
 def find_metric_row(ws, metric_name, search_col=1, max_row=200):
-    """Find row by label (exact or startswith match)."""
+    """Find row by label. Exact match takes priority over startswith."""
+    first_startswith = None
     for row in range(1, max_row + 1):
         v = ws.cell(row, search_col).value
         if v:
             s = str(v).strip()
-            if s == metric_name or s.startswith(metric_name):
+            if s == metric_name:
                 return row
-    return None
+            if first_startswith is None and s.startswith(metric_name):
+                first_startswith = row
+    return first_startswith
 
 
 def safe_float(v):
@@ -344,6 +388,8 @@ def main():
     if args.database is None:
         args.database = f"Financial-Data-Database-{args.company.capitalize()}.xlsx"
 
+    sections_to_use = load_company_sections(args.company)
+
     print("=" * 60)
     print("SECTION DETAIL EXTRACTION")
     print("=" * 60)
@@ -353,7 +399,7 @@ def main():
     try:
         wb = openpyxl.load_workbook(args.input, data_only=True)
 
-        for section_name, config in SECTIONS_CONFIG.items():
+        for section_name, config in sections_to_use.items():
             print(f"\n--- Section: {section_name} ---")
             sheet_name = config["source_sheet"]
             if sheet_name not in wb.sheetnames:
