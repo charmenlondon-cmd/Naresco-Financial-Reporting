@@ -53,6 +53,9 @@ if not errorlevel 1 set COMPANY=mcp
 if not "%COMPANY%"=="" goto :COMPANY_FOUND
 echo %FILENAME% | findstr /i "mci" >nul
 if not errorlevel 1 set COMPANY=mci
+if not "%COMPANY%"=="" goto :COMPANY_FOUND
+echo %FILENAME% | findstr /i "transon" >nul
+if not errorlevel 1 set COMPANY=transon
 
 :COMPANY_FOUND
 if "%COMPANY%"=="" (

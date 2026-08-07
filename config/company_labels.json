@@ -235,5 +235,99 @@
         "source_sheet": "P&L Format"
       }
     }
+  },
+  "transon": {
+    "source_sheet": "Detail Budget",
+    "label_col": 2,
+    "bva_row_labels": {
+      "Total Staff Cost (Direct)": "Total Staff Cost",
+      "Total Fixed Cost (Indirect)": "Total Administration Cost",
+      "Gross Profit / (Loss)": null,
+      "Interest Expenses": "Interest Expenses"
+    },
+    "sections": {
+      "Variable Costs": {
+        "metrics": [
+          "Diesel Charges -Trans on vehicle",
+          "Diesel Charges -for Revenu",
+          "Parking Charges-New Account",
+          "Repair & Maintenance Machinery",
+          "Repair & Maintenance Vehicles",
+          "Wages & Salaries - Direct",
+          "Hire Charges Machinaries",
+          "Hire Charges Vehicle",
+          "Vehicle Petrol Exp",
+          "Vehicle Service Expenses",
+          "Other Expenses - Direct",
+          "Car wash Expense",
+          "Depreciation Expense",
+          "Salik charges for Waste Water",
+          "Salik charges for GW",
+          "Sweet Water Charges",
+          "Salik Recharge- Vehicles",
+          "Salary Transfer Charges",
+          "Renewal of Vehicles & Machinaries",
+          "Garage Expenses - Genral"
+        ],
+        "total_label": "Total Variable Cost",
+        "source_sheet": "Detail Budget"
+      },
+      "Fixed Costs": {
+        "metrics": [
+          "Staff Salaries",
+          "Managers Salary",
+          "Management Salary",
+          "Labour Accomodation - Direct",
+          "VAT expenses",
+          "Gratuity Expenses - Labours",
+          "Recruitment Expenses - Sites",
+          "Insurance- General",
+          "Insurances - Vehicle",
+          "Sites Leave Salary",
+          "Security Guard Services",
+          "Staff Recruitment Expenses",
+          "Staff Leave Salary",
+          "Medical Insurance - staff",
+          "Medical Insurance - Workers / Staff",
+          "Travel Allowance - Office",
+          "Gratuity Expenses - Office Staff",
+          "General Pension Contribution"
+        ],
+        "total_label": "Total Staff Cost",
+        "source_sheet": "Detail Budget"
+      },
+      "Indirect Costs": {
+        "metrics": [
+          "Office Water & Electricity",
+          "Software Charges",
+          "Adminsitrative Expenses -AAAI",
+          "IT Expense-AAAI",
+          "HR Expense-AAAI",
+          "Communication Expenses",
+          "Legal & Lawyers Fees",
+          "Loss on Sale of Assets",
+          "Managers Bonus and Allowance",
+          "Group Fees",
+          "Round Off Expense",
+          "Medical Expense",
+          "Bank Interst On Term Loan & Overdraft",
+          "Staff Accomadation Expenses",
+          "Bank Interest on Overdraft (ENBD)",
+          "Misc Expenses - office",
+          "Depreciation & Amortization",
+          "Interest on Lease liablities",
+          "Printing & Stationery",
+          "Office Vehicle,Convenyence, Parking & Car Allowances",
+          "Bank Charges & Fees"
+        ],
+        "total_label": "Total Administration Cost",
+        "source_sheet": "Detail Budget"
+      },
+      "TDI": {
+        "metrics": ["Interest Expenses"],
+        "total_label": "TOTAL TDI",
+        "source_sheet": "Detail Budget"
+      }
+    }
   }
 }
