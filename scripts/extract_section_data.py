@@ -13,6 +13,7 @@ import openpyxl
 from openpyxl import load_workbook, Workbook
 import argparse
 import json
+from xlsx_utils import safe_load_workbook
 from pathlib import Path
 from datetime import datetime
 
@@ -397,7 +398,7 @@ def main():
     print(f"Database: {args.database}")
 
     try:
-        wb = openpyxl.load_workbook(args.input, data_only=True)
+        wb = safe_load_workbook(args.input, data_only=True)
 
         for section_name, config in sections_to_use.items():
             print(f"\n--- Section: {section_name} ---")

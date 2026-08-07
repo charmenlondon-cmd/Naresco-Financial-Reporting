@@ -13,6 +13,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 import json
+from xlsx_utils import safe_load_workbook
 import copy
 
 
@@ -230,7 +231,7 @@ def extract_from_source(file_path, sheet_name="Detail Budget", company="default"
         if metric_key in metrics_config:
             metrics_config[metric_key]["row_name"] = company_label  # None = derived
 
-    wb = openpyxl.load_workbook(file_path, data_only=True)
+    wb = safe_load_workbook(file_path, data_only=True)
 
     if sheet_name not in wb.sheetnames:
         raise ValueError(f"Sheet '{sheet_name}' not found")

@@ -11,6 +11,7 @@ import json
 import argparse
 from datetime import datetime
 from pathlib import Path
+from xlsx_utils import safe_load_workbook
 
 
 # Metric names to search for (from source file)
@@ -249,7 +250,7 @@ def extract_all_metrics(file_path, sheet_name="Detail Budget", extract_all_month
         list: List of metric dictionaries in RAW DATA format
     """
     print(f"Loading workbook: {file_path}")
-    wb = openpyxl.load_workbook(file_path, data_only=True)
+    wb = safe_load_workbook(file_path, data_only=True)
 
     if sheet_name not in wb.sheetnames:
         raise ValueError(f"Sheet '{sheet_name}' not found. Available sheets: {wb.sheetnames}")
