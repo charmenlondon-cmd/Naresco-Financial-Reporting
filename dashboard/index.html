@@ -427,6 +427,32 @@
             transform: translateY(-1px);
         }
         .change-company-btn:active { transform: translateY(0); box-shadow: none; }
+
+        .pipeline-btn {
+            background: #f0fdf4; color: #166534; border: 1px solid #86efac;
+            padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+            font-weight: 600; letter-spacing: 0.03em;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+            transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+        }
+        .pipeline-btn:hover { background: #dcfce7; box-shadow: 0 2px 6px rgba(0,0,0,0.12); transform: translateY(-1px); }
+        .pipeline-btn:active { transform: translateY(0); box-shadow: none; }
+        .pipeline-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        #pipelineStatus {
+            margin-top: 16px; padding: 12px 16px; border-radius: 8px;
+            font-size: 14px; font-weight: 500; text-align: left;
+        }
+        #pipelineStatus.status-success { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+        #pipelineStatus.status-no_files { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+        #pipelineStatus.status-error { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+        #pipelineStatus.status-loading { background: #eff6ff; color: #1e40af; border: 1px solid #93c5fd; }
+        #pipelineLog {
+            margin-top: 10px; padding: 10px; background: #1e293b; color: #94a3b8;
+            border-radius: 6px; font-family: monospace; font-size: 12px;
+            white-space: pre-wrap; max-height: 200px; overflow-y: auto;
+            font-weight: 400;
+        }
     </style>
 </head>
 <body>
@@ -437,6 +463,10 @@
             <h1 style="color:#1e3a8a; font-size:24px; font-weight:700; margin-bottom:8px;">Financial Dashboard</h1>
             <p style="color:#718096; margin-bottom:32px; font-size:15px;">Select a company to continue</p>
             <div id="companyBtns"><div style="color:#718096; padding:20px;">Loading...</div></div>
+            <div style="margin-top:28px; border-top:1px solid #e2e8f0; padding-top:24px;">
+                <button id="selectorPipelineBtn" class="pipeline-btn" onclick="runPipeline()">Process New Files</button>
+                <div id="pipelineStatus" style="display:none;"></div>
+            </div>
         </div>
     </div>
 
@@ -447,6 +477,7 @@
             <div class="header-content">
                 <button class="admin-toggle" onclick="toggleAdmin()">Settings</button>
                 <button class="change-company-btn" onclick="changeCompany()">&#8592; Companies</button>
+                <button id="headerPipelineBtn" class="pipeline-btn" onclick="runPipeline()" style="margin-left:8px;">Process New Files</button>
                 <h1>Budget vs Actual Dashboard</h1>
                 <div class="meta">
                     <span id="companyNameLabel" style="font-weight:600; color:#1e40af;"></span> |
@@ -580,6 +611,47 @@
                 });
             } catch(e) {
                 container.innerHTML = '<p style="color:red; font-size:14px;">Error loading company list.<br>Please ensure data/companies.json exists.</p>';
+            }
+        }
+
+        async function runPipeline() {
+            const allBtns = document.querySelectorAll('#selectorPipelineBtn, #headerPipelineBtn');
+            const statusEl = document.getElementById('pipelineStatus');
+
+            allBtns.forEach(b => { b.disabled = true; b.textContent = 'Processing...'; });
+            if (statusEl) {
+                statusEl.className = 'status-loading';
+                statusEl.innerHTML = 'Running pipeline — this may take a minute...';
+                statusEl.style.display = 'block';
+            }
+
+            try {
+                const res = await fetch('/api/run-pipeline', { method: 'POST' });
+                const data = await res.json();
+
+                if (statusEl) {
+                    statusEl.className = `status-${data.status}`;
+                    const icons = { success: '✓', no_files: 'ℹ', error: '✗', loading: '...' };
+                    const icon = icons[data.status] || '';
+                    let html = `<strong>${icon} ${data.message}</strong>`;
+                    if (data.output) {
+                        html += `<details style="margin-top:8px;"><summary style="cursor:pointer; font-size:13px; font-weight:500;">View log</summary><div id="pipelineLog">${data.output}</div></details>`;
+                    }
+                    statusEl.innerHTML = html;
+                    statusEl.style.display = 'block';
+
+                    if (data.status === 'success') {
+                        setTimeout(() => { statusEl.style.display = 'none'; }, 8000);
+                    }
+                }
+            } catch(e) {
+                if (statusEl) {
+                    statusEl.className = 'status-error';
+                    statusEl.innerHTML = `<strong>✗ Could not reach the pipeline server.</strong><br><small>Make sure you started the dashboard with <code>python serve.py</code> rather than <code>python -m http.server</code>.</small>`;
+                    statusEl.style.display = 'block';
+                }
+            } finally {
+                allBtns.forEach(b => { b.disabled = false; b.textContent = 'Process New Files'; });
             }
         }
 
