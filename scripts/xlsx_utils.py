@@ -4,18 +4,24 @@ and automatically patches known stylesheet issues (e.g. font family
 values > 14, which some third-party Excel generators produce) before
 retrying, so the rest of the pipeline never sees the error.
 """
-import os
 import re
+import tempfile
 import zipfile
 from pathlib import Path
 
 import openpyxl
 
 
-def _sanitize_xlsx(file_path):
-    """Patch invalid font family values in xl/styles.xml, rewriting the file in-place."""
+def _sanitize_to_temp(file_path):
+    """
+    Write a patched copy of the xlsx to a system temp file and return its path.
+    Never touches the original — avoids file-locking issues (e.g. OneDrive sync).
+    Caller is responsible for deleting the temp file when done.
+    """
     file_path = Path(file_path)
-    tmp_path = file_path.with_suffix('.tmp.xlsx')
+    tmp = tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False)
+    tmp.close()
+    tmp_path = Path(tmp.name)
     try:
         with zipfile.ZipFile(file_path, 'r') as zin:
             with zipfile.ZipFile(tmp_path, 'w', zipfile.ZIP_DEFLATED) as zout:
@@ -30,11 +36,10 @@ def _sanitize_xlsx(file_path):
                         )
                         data = xml_str.encode('utf-8')
                     zout.writestr(item, data)
-        os.replace(tmp_path, file_path)
+        return tmp_path
     except Exception as e:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise RuntimeError(f"Could not sanitize {file_path.name}: {e}") from e
+        tmp_path.unlink(missing_ok=True)
+        raise RuntimeError(f"Could not patch stylesheet in {file_path.name}: {e}") from e
 
 
 def safe_load_workbook(file_path, **kwargs):
@@ -48,5 +53,8 @@ def safe_load_workbook(file_path, **kwargs):
         if 'stylesheet' not in str(exc).lower():
             raise
         print(f"  [INFO] Patching invalid stylesheet in {Path(file_path).name} ...")
-        _sanitize_xlsx(file_path)
-        return openpyxl.load_workbook(file_path, **kwargs)
+        tmp_path = _sanitize_to_temp(file_path)
+        try:
+            return openpyxl.load_workbook(tmp_path, **kwargs)
+        finally:
+            tmp_path.unlink(missing_ok=True)
