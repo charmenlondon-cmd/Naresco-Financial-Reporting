@@ -10,6 +10,76 @@
       "Total Staff Cost (Direct)": "Total Direct Fixed Cost",
       "Total Fixed Cost (Indirect)": "Total Indirect Fixed Cost",
       "Interest Expenses": "OD Interest Expenses"
+    },
+    "sections": {
+      "Variable Costs": {
+        "metrics": ["Dry Cost - on Hand Projects", "Forecasted Projects Dry Cost"],
+        "total_label": "Total Variable Cost",
+        "source_sheet": "P&L Format"
+      },
+      "Fixed Costs": {
+        "metrics": [
+          "Staff Salaries",
+          "Labor Salaries",
+          "Wages & Salaries",
+          "Employee Gratuity (site staff & labors)",
+          "Staff Air Ticket Provision",
+          "Employee Visa Cost",
+          "Staff Insurance Expense",
+          "General Insurance",
+          "Staff Leave Salary",
+          "Staff Welfare",
+          "Staff Uniform",
+          "Labour Transportation"
+        ],
+        "total_label": "Total Direct Fixed Cost",
+        "source_sheet": "P&L Format"
+      },
+      "Indirect Costs": {
+        "metrics": [
+          "Staff Leave Salary (Included in salary)",
+          "Employee Gratuity (office staff)",
+          "CAMP Expenses",
+          "Pension Expense 15%",
+          "Managers Salary",
+          "Managers Allowances",
+          "Rent",
+          "YARD Expenses",
+          "DEWA (Electricity & Water) - Office",
+          "Telephone & Internet",
+          "Travelling & Transport - Admin",
+          "Printing & Stationery",
+          "Building Insurance",
+          "Building Maintenance",
+          "Vehicle Insurance",
+          "Repair & Maintenance - Vehicle",
+          "Repair & Maintenance - Mechines",
+          "AAAI Group Fees",
+          "Divisional Salaries & Other Expenses",
+          "Events & Misc. Admin Charges (AAAI)",
+          "HR Service charges",
+          "IT Expenses",
+          "Software Charges",
+          "Fine & Penalty",
+          "VAT Expenses",
+          "Audit fee",
+          "Noqodi Charges",
+          "New and Renewal of Licenses",
+          "Legal & Lawyers Fees",
+          "Bank Charges",
+          "Donation",
+          "Business Promotion Expense",
+          "Advertising & Social Media Expenses",
+          "Travelling & Transport - Marketing"
+        ],
+        "total_label": "Total Indirect Fixed Cost",
+        "source_sheet": "P&L Format"
+      },
+      "TDI": {
+        "metrics": ["OD Interest Expenses", "Amortization", "Depreciation"],
+        "total_label": "Total TDI",
+        "source_sheet": "P&L Format"
+      }
     }
   },
   "mudin": {
