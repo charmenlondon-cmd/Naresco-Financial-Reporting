@@ -13,69 +13,68 @@
     }
   },
   "mudin": {
+    "source_sheet": "P&L Format",
+    "label_col": 2,
     "bva_row_labels": {
       "Total Staff Cost (Direct)": "Total Staff Cost",
-      "Gross Profit / (Loss)": null,
-      "Total Fixed Cost (Indirect)": "Total Administration Cost",
-      "Interest Expenses": "OD Interest Expenses"
+      "Total Fixed Cost (Indirect)": "Total Indirect Fixed Cost",
+      "Interest Expenses": null,
+      "Amortization": null,
+      "Depreciation": null
     },
     "sections": {
       "Variable Costs": {
-        "metrics": ["Material & Sub-contract Cost", "Labor Transportation Charges"],
+        "metrics": ["Dry Cost - on Hand Projects", "Forecasted Projects Dry Cost"],
         "total_label": "Total Variable Cost",
-        "source_sheet": "Detail Budget"
+        "source_sheet": "P&L Format"
       },
       "Fixed Costs": {
         "metrics": [
           "Staff Salaries",
           "Labor Salaries",
-          "Employee Gratuity",
-          "Staff Air Ticket Provision",
+          "Wages & Salaries",
+          "Camp Rent",
+          "Employee Air Ticket Provision",
           "Employee Visa Cost",
-          "Staff Insurance Expense",
+          "Employee Insurance Expense",
+          "Repair & Maintenance - Vehicle & Diesel",
           "CAMP Expenses",
-          "Staff Welfare",
-          "Staff Uniform",
-          "Pension Expense 15%"
+          "Staff Uniform"
         ],
         "total_label": "Total Staff Cost",
-        "source_sheet": "Detail Budget"
+        "source_sheet": "P&L Format"
       },
       "Indirect Costs": {
         "metrics": [
+          "Managers Salary",
           "Director Remuneration",
-          "Director Allowances",
-          "Rent",
-          "YARD Expenses",
-          "DEWA (Electricity & Water) - Office",
+          "Rent Office",
+          "SEWA (Electricity & Water)",
           "Telephone & Internet",
-          "Travelling & Transport",
           "Printing & Stationery",
-          "Building Insurance",
-          "Building Maintenance",
-          "Vehicle Insurance",
-          "Repair & Maintenance - Vehicle",
-          "Repair & Maintenance - General",
-          "ANA",
+          "Misc Expenses",
           "Divisional Salaries & Other Expenses",
-          "Administration Charges",
+          "AAAI Group Fees",
           "HR Service charges",
           "IT Expenses",
           "Software Charges",
-          "Fine & Penalty",
-          "VAT Expenses",
           "Audit fee",
+          "Tender Fees",
           "New and Renewal of Licenses",
-          "Government & Municipality Charges",
-          "Bank Charges"
+          "Bank Charges",
+          "Depreciation",
+          "Business Promotion Expense",
+          "Advertising & Social Media Expenses",
+          "Travelling & Transport - Marketing"
         ],
-        "total_label": "Total Administration Cost",
-        "source_sheet": "Detail Budget"
+        "total_label": "Total Indirect Fixed Cost",
+        "source_sheet": "P&L Format"
       },
       "TDI": {
         "metrics": ["OD Interest Expenses", "Amortization", "Depreciation"],
         "total_label": "TOTAL TDI",
-        "source_sheet": "Detail Budget"
+        "source_sheet": "Detail Budget",
+        "label_col": 1
       }
     }
   },

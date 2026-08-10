@@ -99,12 +99,13 @@ SECTIONS_CONFIG = {
 def load_company_sections(company):
     config_path = Path(__file__).parent.parent / "config" / "company_labels.json"
     if not config_path.exists():
-        return SECTIONS_CONFIG
+        return SECTIONS_CONFIG, 1
     with open(config_path) as f:
         all_configs = json.load(f)
     company_config = all_configs.get(company, {})
     sections = company_config.get("sections", {})
-    return sections if sections else SECTIONS_CONFIG
+    label_col = company_config.get("label_col", 1)
+    return (sections if sections else SECTIONS_CONFIG), label_col
 
 
 _MONTH_NAMES_LOWER = frozenset(m.lower() for m in MONTH_NAMES)
@@ -207,14 +208,14 @@ def safe_float(v):
     return 0.0
 
 
-def extract_section_from_source(ws, metrics, col_structure):
+def extract_section_from_source(ws, metrics, col_structure, label_col=1):
     """
     Extract Budget/Actual/Variance for listed metric rows across all months.
     Returns list of dicts: {description, month_label: {budget, actual, variance}}
     """
     results = []
     for metric in metrics:
-        row_num = find_metric_row(ws, metric)
+        row_num = find_metric_row(ws, metric, search_col=label_col)
         if row_num is None:
             print(f"    WARNING: '{metric}' not found — skipping")
             continue
@@ -389,7 +390,7 @@ def main():
     if args.database is None:
         args.database = f"Financial-Data-Database-{args.company.capitalize()}.xlsx"
 
-    sections_to_use = load_company_sections(args.company)
+    sections_to_use, label_col = load_company_sections(args.company)
 
     print("=" * 60)
     print("SECTION DETAIL EXTRACTION")
@@ -412,7 +413,8 @@ def main():
             source_months = [label for _, label, _, _, _ in col_structure]
             print(f"  Source months detected: {source_months}")
 
-            source_rows = extract_section_from_source(ws, config["metrics"], col_structure)
+            section_label_col = config.get("label_col", label_col)
+            source_rows = extract_section_from_source(ws, config["metrics"], col_structure, label_col=section_label_col)
             if not source_rows:
                 print(f"  No rows extracted for '{section_name}' — skipping")
                 continue
